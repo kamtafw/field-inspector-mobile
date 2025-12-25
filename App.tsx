@@ -2,6 +2,7 @@ import { StatusBar } from "expo-status-bar"
 import { useEffect } from "react"
 import { StyleSheet, Text, View } from "react-native"
 import { getNetworkState, subscribeToNetworkChanges } from "./src/services/network/NetworkMonitor"
+import "./global.css"
 
 export default function App() {
 	useEffect(() => {
@@ -17,7 +18,7 @@ export default function App() {
 	}, [])
 	return (
 		<View style={styles.container}>
-			<Text>NETWORK DETECTION ACTIVE!</Text>
+			<Text className="text-blue-500">NETWORK DETECTION ACTIVE!</Text>
 			<Text>Listening for network changes...</Text>
 			<StatusBar style="auto" />
 		</View>
