@@ -1,20 +1,34 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { StatusBar } from "expo-status-bar"
+import { useEffect } from "react"
+import { StyleSheet, Text, View } from "react-native"
+import { getNetworkState, subscribeToNetworkChanges } from "./src/services/network/NetworkMonitor"
 
 export default function App() {
-  return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
-  );
+	useEffect(() => {
+		const unsubscribe = subscribeToNetworkChanges((state) => {
+			console.log("NETWORK CHANGE:", {
+				isConnected: state.isConnected,
+				isInternetReachable: state.isInternetReachable,
+				type: state.type,
+			})
+		})
+
+		return unsubscribe
+	}, [])
+	return (
+		<View style={styles.container}>
+			<Text>NETWORK DETECTION ACTIVE!</Text>
+			<Text>Listening for network changes...</Text>
+			<StatusBar style="auto" />
+		</View>
+	)
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+	container: {
+		flex: 1,
+		backgroundColor: "#fff",
+		alignItems: "center",
+		justifyContent: "center",
+	},
+})
