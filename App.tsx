@@ -1,8 +1,9 @@
-import { StatusBar } from "expo-status-bar"
 import { useEffect } from "react"
-import { StyleSheet, Text, View } from "react-native"
-import { getNetworkState, subscribeToNetworkChanges } from "./src/services/network/NetworkMonitor"
+import { StyleSheet, Text, View, StatusBar } from "react-native"
+import { subscribeToNetworkChanges } from "./src/services/network/NetworkMonitor"
+import { SafeAreaProvider } from "react-native-safe-area-context"
 import "./global.css"
+import LoginScreen from "./src/screens/auth/LoginScreen"
 
 export default function App() {
 	useEffect(() => {
@@ -17,11 +18,10 @@ export default function App() {
 		return unsubscribe
 	}, [])
 	return (
-		<View style={styles.container}>
-			<Text className="text-blue-500">NETWORK DETECTION ACTIVE!</Text>
-			<Text>Listening for network changes...</Text>
-			<StatusBar style="auto" />
-		</View>
+		<SafeAreaProvider>
+			<StatusBar barStyle="dark-content" />
+			<LoginScreen onLoginSuccess={() => {}} />
+		</SafeAreaProvider>
 	)
 }
 
