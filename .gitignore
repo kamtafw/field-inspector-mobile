@@ -320,3 +320,5 @@ fix_*.patch
 /packages/**/types_generated/
 
 CHECK.md
+
+.expo
