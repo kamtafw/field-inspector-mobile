@@ -9,17 +9,14 @@ import {
 	View,
 } from "react-native"
 import { clsx } from "clsx"
-import authApi from "@/src/services/api/auth.api"
+import { useAuth } from "@/src/hooks/useAuth"
 
-interface LoginScreenProps {
-	onLoginSuccess: () => void
-}
-
-export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
+export default function LoginScreen() {
 	const [email, setEmail] = useState(__DEV__ ? "admin@example.com" : "")
 	const [password, setPassword] = useState(__DEV__ ? "Year-2025" : "")
 	const [isLoading, setIsLoading] = useState(false)
 	const [error, setError] = useState("")
+	const { login } = useAuth()
 
 	const handleLogin = async () => {
 		if (!email || !password) {
@@ -30,16 +27,8 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 		setIsLoading(true)
 		setError("")
 
-		setTimeout(() => {}, 3000)
-
 		try {
-			// const response = await fetch("http://10.57.9.18:8000/api/auth/login/", {
-			// 	method: "POST",
-			// 	body: JSON.stringify({ email, password }),
-			// })
-			const response = await authApi.login({ email, password })
-			console.log("Login success:", response)
-			onLoginSuccess()
+			await login({ email, password })
 		} catch (err: any) {
 			console.error("Login error:", err)
 			const errorMessage = err.response?.data?.error || err.message || "Login failed"

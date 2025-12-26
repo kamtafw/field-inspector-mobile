@@ -11,6 +11,7 @@
 		"**/*.tsx",
 		"nativewind-env.d.ts",
 		"services/websocketManager.js",
-		"src/theme/colors.js"
+		"src/theme/colors.js",
+		"global.d.ts"
 	]
 }

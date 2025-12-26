@@ -1,61 +1,34 @@
-import { useEffect } from "react"
-import { StyleSheet, Text, View, StatusBar } from "react-native"
-import { subscribeToNetworkChanges } from "./src/services/network/NetworkMonitor"
+import { Text, View, StatusBar, ActivityIndicator } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
-import LoginScreen from "./src/screens/auth/LoginScreen"
-import HomeScreen from "./src/screens/home/HomeScreen"
+import RootNavigator from "./src/navigation/RootNavigator"
+import { useAuth } from "./src/hooks/useAuth"
 import "./global.css"
-import authApi from "./src/services/api/auth.api"
-import { NavigationContainer } from "@react-navigation/native"
-import { createNativeStackNavigator } from "@react-navigation/native-stack"
-import { useBootstrapApp } from "./src/hooks/useBootstrapApp"
+import { AuthProvider } from "./src/context/AuthContext"
 
-function Navigation() {
-	// useEffect(() => {
-	// 	const unsubscribe = subscribeToNetworkChanges((state) => {
-	// 		console.log("NETWORK CHANGE:", {
-	// 			isConnected: state.isConnected,
-	// 			isInternetReachable: state.isInternetReachable,
-	// 			type: state.type,
-	// 		})
-	// 	})
+function AppShell() {
+	const { isReady } = useAuth()
 
-	// 	return unsubscribe
-	// }, [])
-	const { ready, error, user } = useBootstrapApp()
-
-	const Stack = createNativeStackNavigator()
-	console.log("IS Ready:", ready)
+	if (!isReady) {
+		return (
+			<View className="flex-1 justify-center items-center bg-background">
+				<ActivityIndicator size="large" color="#007AFF" />
+				<Text className="mt-3 text-base text-[#666] font-bold">Loading...</Text>
+			</View>
+		)
+	}
 
 	return (
-		<NavigationContainer>
-			<Stack.Navigator screenOptions={{ headerShown: false }}>
-				{ready ? (
-					<Stack.Screen name="Home" component={HomeScreen} />
-				) : (
-					<Stack.Screen name="Login">
-						{(props) => <LoginScreen {...props} onLoginSuccess={() => {}} />}
-					</Stack.Screen>
-				)}
-			</Stack.Navigator>
-		</NavigationContainer>
+		<SafeAreaProvider>
+			<StatusBar barStyle="dark-content" />
+			<RootNavigator />
+		</SafeAreaProvider>
 	)
 }
 
 export default function App() {
 	return (
-		<SafeAreaProvider>
-			<StatusBar barStyle="dark-content" />
-			<Navigation />
-		</SafeAreaProvider>
+		<AuthProvider>
+			<AppShell />
+		</AuthProvider>
 	)
 }
-
-const styles = StyleSheet.create({
-	container: {
-		flex: 1,
-		backgroundColor: "#fff",
-		alignItems: "center",
-		justifyContent: "center",
-	},
-})

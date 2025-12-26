@@ -24,9 +24,7 @@ export interface RefreshResponse {
 class AuthAPI {
 	// Login user and store tokens
 	async login(credentials: LoginCredentials): Promise<LoginResponse> {
-		console.log("CREDENTIALS:", credentials)
 		const response = await api.post<LoginResponse>("/auth/login/", credentials)
-		console.log("RESPONSE BACK:", response)
 
 		// store tokens securely
 		await SecureStore.setItemAsync("accessToken", response.data.access)
@@ -53,7 +51,7 @@ class AuthAPI {
 			const refreshToken = await SecureStore.getItemAsync("refreshToken")
 			if (refreshToken) {
 				// invalidate refresh token on server
-				await api.post("/auth/logout", { refresh: refreshToken })
+				// await api.post("/auth/logout", { refresh: refreshToken })
 			}
 		} catch (error) {
 			// ignore logout errors & proceed to clear tokens
@@ -62,6 +60,8 @@ class AuthAPI {
 			await SecureStore.deleteItemAsync("accessToken")
 			await SecureStore.deleteItemAsync("refreshToken")
 			await SecureStore.deleteItemAsync("user")
+
+			console.log("Store cleared!")
 		}
 	}
 
