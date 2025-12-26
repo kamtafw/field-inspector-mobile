@@ -8,6 +8,8 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native"
+import { clsx } from "clsx"
+import authApi from "@/src/services/api/auth.api"
 
 interface LoginScreenProps {
 	onLoginSuccess: () => void
@@ -28,9 +30,15 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 		setIsLoading(true)
 		setError("")
 
+		setTimeout(() => {}, 3000)
+
 		try {
-			const response = ""
-			console.log("Login success:", response.user)
+			// const response = await fetch("http://10.57.9.18:8000/api/auth/login/", {
+			// 	method: "POST",
+			// 	body: JSON.stringify({ email, password }),
+			// })
+			const response = await authApi.login({ email, password })
+			console.log("Login success:", response)
 			onLoginSuccess()
 		} catch (err: any) {
 			console.error("Login error:", err)
@@ -92,12 +100,15 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
 					{/* Login Button */}
 					<TouchableOpacity
-						className="bg-[#007aff] p-4 rounded-lg items-center mt-2"
+						className={clsx(
+							"bg-[#007aff] p-4 rounded-lg items-center mt-2",
+							isLoading && "opacity-60"
+						)}
 						onPress={handleLogin}
 						disabled={isLoading}
 					>
 						{isLoading ? (
-							<ActivityIndicator className="opacity-60" color="#fff" />
+							<ActivityIndicator color="#fff" />
 						) : (
 							<Text className="text-white text-base font-semibold">Sign In</Text>
 						)}

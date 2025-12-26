@@ -1,6 +1,6 @@
 {
 	"expo": {
-		"name": "field-inspector-mobile",
+		"name": "Field Inspector",
 		"slug": "field-inspector-mobile",
 		"version": "1.0.0",
 		"orientation": "portrait",
@@ -20,12 +20,14 @@
 				"foregroundImage": "./assets/adaptive-icon.png",
 				"backgroundColor": "#ffffff"
 			},
+			"useCleartextTraffic": true,
 			"edgeToEdgeEnabled": true,
 			"predictiveBackGestureEnabled": false
 		},
 		"web": {
 			"bundler": "metro",
 			"favicon": "./assets/favicon.png"
-		}
+		},
+		"plugins": ["expo-router"]
 	}
 }
