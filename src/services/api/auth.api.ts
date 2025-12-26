@@ -32,6 +32,7 @@ class AuthAPI {
 
 		// store user info for offline access
 		await SecureStore.setItemAsync("user", JSON.stringify(response.data.user))
+		await SecureStore.setItemAsync("lastUserId", response.data.user.id)
 
 		return response.data
 	}

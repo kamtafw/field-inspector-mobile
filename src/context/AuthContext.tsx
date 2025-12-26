@@ -26,12 +26,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 	const login = async (credentials: LoginCredentials) => {
 		await authApi.login(credentials)
+
+		// resume sync: SyncService.resume()
+
+		// setUser(user)
 		setIsAuthenticated(true)
 	}
 
 	const logout = async () => {
 		await authApi.logout()
+
+		// stop sync: SyncService.pause()
+
+		// clear in-memory state
 		setIsAuthenticated(false)
+		// setUser(null)
 	}
 
 	return (
