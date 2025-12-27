@@ -24,30 +24,30 @@ export default function HomeScreen() {
 	}
 
 	const handleAddInspection = async () => {
-		console.warn("Add inspection:", facilityName)
-
 		const inspectionsCollection = database.get<Inspection>("inspections")
 
 		await database.write(async () => {
-			const record = await inspectionsCollection.create((inspection) => {
+			await inspectionsCollection.create((inspection) => {
 				inspection.facilityName = facilityName
 				inspection.status = "draft"
 				inspection.isSynced = false
 			})
-
-			console.log("RECORD:", record.facilityName)
 		})
 
 		setFacilityName("")
 	}
 
-	const handleReadInspections = async () => {
-		const inspectionsCollection = database.get("inspections")
+	const handleUpdateInspection = async () => {
+		const inspectionsCollection = database.get<Inspection>("inspections")
 
 		const inspections = await inspectionsCollection.query().fetch()
-		console.log(inspections.map((r) => r._raw))
+		const inspection = inspections[0]
+		await inspection.update((updatedInspection) => {
+			updatedInspection.facilityName = "NASCO"
+			updatedInspection.status = "conflict"
+		})
 
-		console.log("TOTAL INSPECTIONS:", inspections.length)
+		console.log("INSPECTION:", inspection.facilityName)
 	}
 
 	return (
@@ -72,7 +72,7 @@ export default function HomeScreen() {
 					</View>
 
 					<Button title="Add inspection" onPress={handleAddInspection} />
-					<Button color="green" title="Read inspections" onPress={handleReadInspections} />
+					<Button color="green" title="Update inspection" onPress={handleUpdateInspection} />
 				</View>
 
 				{/* Logout Button */}

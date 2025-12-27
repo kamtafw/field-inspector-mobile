@@ -1,8 +1,8 @@
 import { FlatList, Text, View } from "react-native"
 import InspectionCard from "./InspectionCard"
-import { useEffect, useState } from "react"
 import database from "@/src/database"
 import Inspection from "@/src/database/models/Inspection"
+import { withObservables } from "@nozbe/watermelondb/react"
 
 export interface InspectionProps {
 	id: string
@@ -24,25 +24,16 @@ function inspectionToProps(inspection: Inspection): InspectionProps {
 	}
 }
 
-export default function InspectionList() {
-	const [inspections, setInspections] = useState<InspectionProps[]>([])
+const inspectionsCollection = database.get<Inspection>("inspections")
 
-	useEffect(() => {
-		const fetchInspections = async () => {
-			const inspectionsCollection = database.get<Inspection>("inspections")
-			const models = await inspectionsCollection.query().fetch()
-			setInspections(models.map(inspectionToProps))
-		}
-
-		fetchInspections()
-	}, [])
-
+function InspectionList({ inspections }: { inspections: Inspection[] }) {
 	return (
 		<View className="flex-auto">
 			{/* Headers */}
 			<View className="flex-row p-3 justify-between">
 				<Text>Facility</Text>
 				<Text>Status</Text>
+				<Text />
 			</View>
 
 			{/* Inspections */}
@@ -54,3 +45,10 @@ export default function InspectionList() {
 		</View>
 	)
 }
+
+const enhance = withObservables([], () => ({
+	inspections: inspectionsCollection.query(),
+}))
+
+const EnhancedInspectionList = enhance(InspectionList)
+export default EnhancedInspectionList
