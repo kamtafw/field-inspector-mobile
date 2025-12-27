@@ -19,25 +19,25 @@ export default appSchema({
 		tableSchema({
 			name: "inspections",
 			columns: [
-				{ name: "remote_id", type: "string", isOptional: true }, // null until synced
-				{ name: "template_id", type: "string", isIndexed: true },
-				// { name: "facility_name", type: "string" },
-				// { name: "facility_address", type: "string" },
-
-				{ name: "responses", type: "string" }, //JSON: {item_id: {value, notes}}
-
+				{ name: "facility_name", type: "string" },
 				{ name: "status", type: "string", isIndexed: true }, // "draft" | "submitted" | "synced" | "conflict"
-				// { name: "version", type: "number" },
-				{ name: "created_at", type: "number" },
-				{ name: "inspector_id", type: "string" },
-
 				{ name: "is_synced", type: "boolean" },
-				{ name: "synced_error", type: "string", isOptional: true },
-				// { name: "synced_at", type: "number", isOptional: true },
-
-				{ name: "submitted_at", type: "number", isOptional: true },
 				{ name: "created_at", type: "number" },
 				{ name: "updated_at", type: "number" },
+
+				// { name: "remote_id", type: "string", isOptional: true }, // null until synced
+				// { name: "template_id", type: "string", isIndexed: true },
+				// { name: "facility_address", type: "string" },
+
+				// { name: "responses", type: "string" }, //JSON: {item_id: {value, notes}}
+
+				// { name: "version", type: "number" },
+				// { name: "inspector_id", type: "string" },
+
+				// { name: "synced_error", type: "string", isOptional: true },
+				// { name: "synced_at", type: "number", isOptional: true },
+
+				// { name: "submitted_at", type: "number", isOptional: true },
 			],
 		}),
 	],

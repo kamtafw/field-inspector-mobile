@@ -29,3 +29,5 @@ const database = new Database({
 	adapter,
 	modelClasses: [Inspection],
 })
+
+export default database

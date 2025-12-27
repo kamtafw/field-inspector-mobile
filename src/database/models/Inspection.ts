@@ -11,13 +11,12 @@ export interface InspectionResponse {
 
 export default class Inspection extends Model {
 	static table = "inspections"
-	
-	@text("inspector_id") inspectorId!: string
+
 	@text("facility_name") facilityName!: string
 	@field("status") status!: "draft" | "submitted" | "synced" | "conflict"
 	@field("is_synced") isSynced!: boolean
-	@readonly() createdAt!: Date
-	@readonly() updatedAt!: Date
+	@readonly @date("created_at") createdAt!: Date
+	@readonly @date("updated_at") updatedAt!: Date
 
 	// @text("remote_id") remoteId?: string
 	// @text("template_id") templateId!: string
@@ -25,6 +24,7 @@ export default class Inspection extends Model {
 
 	// @json("responses", (json) => json) responses!: InspectionResponse
 
+	// @text("inspector_id") inspectorId!: string
 	// @field("version") version!: number
 
 	// @date("synced_at") syncedAt?: Date

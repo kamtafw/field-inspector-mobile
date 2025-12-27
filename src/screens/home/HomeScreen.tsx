@@ -3,8 +3,9 @@ import { View, Text, TouchableOpacity, ActivityIndicator, Button, TextInput } fr
 import { SafeAreaView } from "react-native-safe-area-context"
 import clsx from "clsx"
 import { useAuth } from "@/src/hooks/useAuth"
-import InspectionCard from "./components/InspectionCard"
 import InspectionList from "./components/InspectionList"
+import database from "@/src/database"
+import Inspection from "@/src/database/models/Inspection"
 
 export default function HomeScreen() {
 	const [isLoading, setIsLoading] = useState(false)
@@ -22,8 +23,31 @@ export default function HomeScreen() {
 		}
 	}
 
-	const handleAddInspection = () => {
+	const handleAddInspection = async () => {
 		console.warn("Add inspection:", facilityName)
+
+		const inspectionsCollection = database.get<Inspection>("inspections")
+
+		await database.write(async () => {
+			const record = await inspectionsCollection.create((inspection) => {
+				inspection.facilityName = facilityName
+				inspection.status = "draft"
+				inspection.isSynced = false
+			})
+
+			console.log("RECORD:", record.facilityName)
+		})
+
+		setFacilityName("")
+	}
+
+	const handleReadInspections = async () => {
+		const inspectionsCollection = database.get("inspections")
+
+		const inspections = await inspectionsCollection.query().fetch()
+		console.log(inspections.map((r) => r._raw))
+
+		console.log("TOTAL INSPECTIONS:", inspections.length)
 	}
 
 	return (
@@ -48,6 +72,7 @@ export default function HomeScreen() {
 					</View>
 
 					<Button title="Add inspection" onPress={handleAddInspection} />
+					<Button color="green" title="Read inspections" onPress={handleReadInspections} />
 				</View>
 
 				{/* Logout Button */}
