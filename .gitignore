@@ -322,3 +322,5 @@ fix_*.patch
 CHECK.md
 
 .expo
+
+android
