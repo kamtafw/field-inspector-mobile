@@ -39,15 +39,24 @@ export default function HomeScreen() {
 
 	const handleUpdateInspection = async () => {
 		const inspectionsCollection = database.get<Inspection>("inspections")
+		console.log("update start")
 
 		const inspections = await inspectionsCollection.query().fetch()
-		const inspection = inspections[0]
-		await inspection.update((updatedInspection) => {
-			updatedInspection.facilityName = "NASCO"
-			updatedInspection.status = "conflict"
+		const inspection = inspections.at(-1)
+
+		if (!inspection) {
+			console.log("No inspection found")
+			return
+		}
+
+		database.write(async () => {
+			await inspection.update((updatedInspection) => {
+				updatedInspection.facilityName = facilityName
+				updatedInspection.status = "conflict"
+			})
 		})
 
-		console.log("INSPECTION:", inspection.facilityName)
+		setFacilityName("")
 	}
 
 	return (
@@ -72,7 +81,7 @@ export default function HomeScreen() {
 					</View>
 
 					<Button title="Add inspection" onPress={handleAddInspection} />
-					<Button color="green" title="Update inspection" onPress={handleUpdateInspection} />
+					<Button color="green" title="Update last inspection" onPress={handleUpdateInspection} />
 				</View>
 
 				{/* Logout Button */}

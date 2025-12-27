@@ -4,8 +4,6 @@ import database from "@/src/database"
 import Inspection from "@/src/database/models/Inspection"
 import { withObservables } from "@nozbe/watermelondb/react"
 
-const inspectionsCollection = database.get<Inspection>("inspections")
-
 interface InspectionProp {
 	inspection: Inspection
 }
@@ -14,7 +12,9 @@ function InspectionCard({ inspection }: InspectionProp) {
 	const handleDeleteRow = async () => {
 		console.log("DELETE:", inspection)
 
-		await inspection.markAsDeleted()
+		database.write(async () => {
+			await inspection.markAsDeleted()
+		})
 	}
 
 	return (
