@@ -32,7 +32,7 @@ class AuthAPI {
 
 		// store user info for offline access
 		await SecureStore.setItemAsync("user", JSON.stringify(response.data.user))
-		// await SecureStore.setItemAsync("lastUserId", response.data.user.id)
+		await SecureStore.setItemAsync("userId", String(response.data.user.id))
 
 		return response.data
 	}
@@ -52,7 +52,7 @@ class AuthAPI {
 			const refreshToken = await SecureStore.getItemAsync("refreshToken")
 			if (refreshToken) {
 				// invalidate refresh token on server
-				// await api.post("/auth/logout", { refresh: refreshToken })
+				await api.post("/auth/logout", { refresh: refreshToken })
 			}
 		} catch (error) {
 			// ignore logout errors & proceed to clear tokens
@@ -66,7 +66,7 @@ class AuthAPI {
 		}
 	}
 
-	// Get current user info
+	// Get stored user info
 	async getCurrentUser(): Promise<LoginResponse["user"] | null> {
 		try {
 			const userData = await SecureStore.getItemAsync("user")
@@ -81,7 +81,8 @@ class AuthAPI {
 	async isAuthenticated(): Promise<boolean> {
 		const accessToken = await SecureStore.getItemAsync("accessToken")
 		const refreshToken = await SecureStore.getItemAsync("refreshToken")
-		return !!(accessToken && refreshToken)
+
+		return Boolean(accessToken && refreshToken)
 	}
 }
 

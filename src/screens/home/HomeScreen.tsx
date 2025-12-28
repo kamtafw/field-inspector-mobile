@@ -1,16 +1,21 @@
 import { useState } from "react"
-import { View, Text, TouchableOpacity, ActivityIndicator, Button, TextInput } from "react-native"
+import { View, Text, TouchableOpacity, ActivityIndicator, Platform } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import clsx from "clsx"
 import { useAuth } from "@/src/hooks/useAuth"
 import InspectionList from "./components/InspectionList"
-import database from "@/src/database"
-import Inspection from "@/src/database/models/Inspection"
+import { useNavigation } from "@react-navigation/native"
+import { NativeStackNavigationProp } from "@react-navigation/native-stack"
+import type { MainStackParamList } from "@/src/navigation/types"
+import { Feather } from "@expo/vector-icons"
+
+type HomeScreenNavigationProp = NativeStackNavigationProp<MainStackParamList, "Home">
 
 export default function HomeScreen() {
 	const [isLoading, setIsLoading] = useState(false)
-	const [facilityName, setFacilityName] = useState("")
 	const { logout } = useAuth()
+	const navigation = useNavigation<HomeScreenNavigationProp>()
+	const inspections = [1, 2, 3]
 
 	const handleLogout = async () => {
 		setIsLoading(true)
@@ -23,80 +28,46 @@ export default function HomeScreen() {
 		}
 	}
 
-	const handleAddInspection = async () => {
-		const inspectionsCollection = database.get<Inspection>("inspections")
-
-		await database.write(async () => {
-			await inspectionsCollection.create((inspection) => {
-				inspection.facilityName = facilityName
-				inspection.status = "draft"
-				inspection.isSynced = false
-			})
-		})
-
-		setFacilityName("")
-	}
-
-	const handleUpdateInspection = async () => {
-		const inspectionsCollection = database.get<Inspection>("inspections")
-		console.log("update start")
-
-		const inspections = await inspectionsCollection.query().fetch()
-		const inspection = inspections.at(-1)
-
-		if (!inspection) {
-			console.log("No inspection found")
-			return
-		}
-
-		database.write(async () => {
-			await inspection.update((updatedInspection) => {
-				updatedInspection.facilityName = facilityName
-				updatedInspection.status = "conflict"
-			})
-		})
-
-		setFacilityName("")
+	const handleCreateNew = async () => {
+		navigation.navigate("CreateInspection")
 	}
 
 	return (
 		<SafeAreaView className="flex-1 bg-background">
 			<View className="bg-white p-5 pt-14 border-b border-[#e0e0e0]">
 				<Text className="text-3xl text-[#1a1a1a] font-bold">Inspections</Text>
-				<Text className="text-sm text-[#666] mt-1">List of inspections available.</Text>
+				<Text className="text-sm text-[#666] mt-1">
+					{inspections.length} {inspections.length === 1 ? "Inspection" : "Inspections"}
+				</Text>
 			</View>
 
-			{/* Content Area */}
-			<View className="flex-1 px-6 py-10 justify-between">
-				<View className="gap-3">
-					<InspectionList />
+			{/* Inspection List */}
+			<InspectionList />
 
-					<View className="p-2 bg-white">
-						<TextInput
-							value={facilityName}
-							onChangeText={setFacilityName}
-							placeholder="Facility name"
-							placeholderTextColor="#666"
-						/>
-					</View>
+			{/* Add Inspection Button */}
+			<TouchableOpacity
+				className={clsx(
+					"absolute z-50 right-8 p-4 rounded-full shadow-lg bg-[#007AFF]",
+					Platform.OS === "android" ? "bottom-16" : "bottom-20"
+				)}
+				style={{ elevation: 6 }}
+				onPress={handleCreateNew}
+			>
+				<Feather name="plus" color="#FFF" size={20} />
+			</TouchableOpacity>
 
-					<Button title="Add inspection" onPress={handleAddInspection} />
-					<Button color="green" title="Update last inspection" onPress={handleUpdateInspection} />
-				</View>
-
-				{/* Logout Button */}
-				<TouchableOpacity
-					className={clsx("bg-[#c42] p-4 rounded-lg items-center mt-2", isLoading && "opacity-60")}
-					onPress={handleLogout}
-					disabled={isLoading}
-				>
-					{isLoading ? (
-						<ActivityIndicator color="#fff" />
-					) : (
-						<Text className="text-white text-base font-semibold">Log Out</Text>
-					)}
-				</TouchableOpacity>
-			</View>
+			{/* Logout Button */}
+			<TouchableOpacity
+				className={clsx("bg-[#c42] m-6 p-4 rounded-lg items-center", isLoading && "opacity-60")}
+				onPress={handleLogout}
+				disabled={isLoading}
+			>
+				{isLoading ? (
+					<ActivityIndicator color="#fff" />
+				) : (
+					<Text className="text-white text-base font-semibold">Log Out</Text>
+				)}
+			</TouchableOpacity>
 		</SafeAreaView>
 	)
 }

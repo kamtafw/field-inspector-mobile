@@ -11,4 +11,6 @@ export type AuthStackParamList = {
 
 export type MainStackParamList = {
 	Home: undefined
+	CreateInspection: undefined
+	InspectionDetail: { id: string }
 }
