@@ -3,11 +3,22 @@ import { field, text, date, readonly, json } from "@nozbe/watermelondb/decorator
 
 export interface InspectionResponse {
 	[itemId: string]: {
-		value: string
+		value: string | number | boolean | null
 		notes?: string
 		timestamp: number
 	}
 }
+
+/*
+status → business state
+	- draft
+	- submitted
+	- synced
+	- conflict
+is_synced → transport state
+	- false = local only
+	- true = confirmed by backend
+*/
 
 export default class Inspection extends Model {
 	static table = "inspections"

@@ -92,10 +92,10 @@ class InspectionRepository {
 
 	// Get all inspections for a user
 	async findAll(userId: string): Promise<Inspection[]> {
-		// return await this.collection
-		// 	.query(Q.where("inspector_id", userId), Q.sortBy("created_at", Q.desc))
-		// 	.fetch()
-		return await this.collection.query().fetch()
+		return await this.collection
+			.query(Q.where("inspector_id", userId), Q.sortBy("created_at", Q.desc))
+			.fetch()
+		// return await this.collection.query().fetch()
 	}
 
 	// Delete inspection (local only)

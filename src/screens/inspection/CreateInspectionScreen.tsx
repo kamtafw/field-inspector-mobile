@@ -1,5 +1,6 @@
 import InspectionRepository from "@/src/database/repositories/InspectionRepository"
 import { useAuth } from "@/src/hooks/useAuth"
+import { useInspections } from "@/src/hooks/useInspections"
 import { useNavigation } from "@react-navigation/native"
 import clsx from "clsx"
 import { useState } from "react"
@@ -28,6 +29,7 @@ export default function CreateInspectionScreen() {
 	const navigation = useNavigation()
 	const { userId } = useAuth()
 	const [isLoading, setIsLoading] = useState(false)
+	const { createInspection } = useInspections()
 
 	// form state
 	const [facilityName, setFacilityName] = useState("")
@@ -54,15 +56,14 @@ export default function CreateInspectionScreen() {
 		setIsLoading(true)
 
 		try {
-			await InspectionRepository.create(
-				{
-					templateId: MOCK_TEMPLATE.id,
-					facilityName: facilityName.trim(),
-					facilityAddress: facilityAddress.trim(),
-					responses,
-				},
-				userId
-			)
+			const data = {
+				templateId: MOCK_TEMPLATE.id,
+				facilityName,
+				facilityAddress,
+				responses,
+			}
+
+			await createInspection(data)
 
 			Alert.alert("Success", "Draft saved locally", [
 				{ text: "OK", onPress: () => navigation.goBack() },
