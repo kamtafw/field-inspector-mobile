@@ -34,15 +34,17 @@ class AuthService {
 
 	// get current user (from local DB if offline)
 	async getCurrentUser() {
-		// try local DB first
-		const localUsers = await usersCollection.query().fetch()
+		try {
+			// try local DB first
+			const localUsers = await usersCollection.query().fetch()
 
-		if (localUsers.length > 0) {
-			return localUsers.at(0)
+			if (localUsers.length > 0) {
+				return localUsers.at(0)
+			}
+		} catch {
+			// fallback to SecureStore
+			return await AuthAPI.getCurrentUser()
 		}
-
-		// fallback to SecureStore
-		return await AuthAPI.getCurrentUser()
 	}
 
 	// check authentication status

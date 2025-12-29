@@ -35,8 +35,6 @@ function StatusBadge({ status }: { status: string }) {
 
 function InspectionCard({ inspection }: InspectionProp) {
 	const handleDeleteRow = async () => {
-		console.log("DELETE:", inspection)
-
 		database.write(async () => {
 			await inspection.markAsDeleted()
 		})
@@ -52,7 +50,7 @@ function InspectionCard({ inspection }: InspectionProp) {
 			</View>
 			<Text className="text-sm text-[#666] mb-2">{inspection.facilityAddress}</Text>
 			<Text className="text-xs text-[#999]">
-				{new Date(inspection.createdAt).toLocaleDateString("en-US", {
+				{new Date(inspection.createdTs).toLocaleDateString("en-US", {
 					month: "short",
 					day: "numeric",
 					year: "numeric",

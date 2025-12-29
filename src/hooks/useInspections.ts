@@ -13,13 +13,17 @@ export const useInspections = () => {
 	const { userId } = useAuth()
 
 	const createInspection = async (data: InspectionData) => {
+		if (!userId) {
+			throw new Error("User must be authenticated to create an inspection")
+		}
+
 		// 1. save to local DB
 		const inspection = await InspectionRepository.create(
 			{
 				templateId: data.templateId,
 				facilityName: data.facilityName,
 				facilityAddress: data.facilityAddress,
-				responses: data.responses,
+				responses: JSON.parse(JSON.stringify(data.responses)),
 			},
 			userId
 		)

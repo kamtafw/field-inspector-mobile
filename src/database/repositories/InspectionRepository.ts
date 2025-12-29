@@ -5,6 +5,19 @@ import Inspection, { InspectionResponse } from "../models/Inspection"
 import { v4 as uuid4 } from "uuid"
 import { Q } from "@nozbe/watermelondb"
 
+/*
+TODO: before saving: const responses = JSON.parse(JSON.stringify(input.responses))
+- ensures serializability
+- strips accidental functions or refs
+- guarantees backend-safe shape
+** this is quiet but powerful hardening move
+
+TODO: avoid partial writes; ensure:
+- DB write happens inside a single WatermelonDB action
+- no async branching inside write block
+** this prevents corrupted rows
+*/
+
 export interface CreateInspectionInput {
 	templateId: string
 	facilityName: string
@@ -25,16 +38,23 @@ class InspectionRepository {
 
 	// Create new inspection (offline-first) & queues sync operation in background
 	async create(input: CreateInspectionInput, userId: string): Promise<Inspection> {
+		const now = Date.now()
+
 		const inspection = await database.write(async () => {
 			const newInspection = await this.collection.create((record) => {
 				record.templateId = input.templateId
 				record.facilityName = input.facilityName
 				record.facilityAddress = input.facilityAddress
 				record.responses = input.responses
+
 				record.status = "draft"
 				record.version = 1
 				record.inspectorId = userId
 				record.isSynced = false
+
+				record.createdTs = now
+				record.updatedTs = now
+				record.lastActionTs = now
 			})
 
 			return newInspection
@@ -59,7 +79,7 @@ class InspectionRepository {
 				// if (input.responses) record.responses = input.responses
 				if (input.status) {
 					record.status = input.status
-					// if (input.status === 'submitted') record.submittedAt = new Date()
+					// if (input.status === 'submitted') record.submittedAt = Date.now()
 				}
 				// version increment only after successful sync
 			})

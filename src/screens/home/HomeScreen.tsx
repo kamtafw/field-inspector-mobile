@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { View, Text, TouchableOpacity, ActivityIndicator, Platform } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import clsx from "clsx"
@@ -8,6 +8,18 @@ import { useNavigation } from "@react-navigation/native"
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import type { MainStackParamList } from "@/src/navigation/types"
 import { Feather } from "@expo/vector-icons"
+import InspectionRepository from "@/src/database/repositories/InspectionRepository"
+
+/*
+TODO: HomeScreen must:
+- render cleanly when zero inspections exist
+- show empty state (even text-only)
+** no spinners forever; no crashes
+
+TODO: sort inspections by:
+- updated_at DESC or created_at DESC
+** prevents list reordering on reload & reduces UI "jumpiness"
+*/
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<MainStackParamList, "Home">
 
@@ -15,7 +27,16 @@ export default function HomeScreen() {
 	const [isLoading, setIsLoading] = useState(false)
 	const { logout } = useAuth()
 	const navigation = useNavigation<HomeScreenNavigationProp>()
-	const inspections = [1, 2, 3]
+	const [inspectionsCount, setInspectionsCount] = useState(0)
+
+	useEffect(() => {
+		const initCount = async () => {
+			const count = await InspectionRepository.collection.query().fetchCount()
+			setInspectionsCount(count)
+		}
+
+		initCount()
+	}, [])
 
 	const handleLogout = async () => {
 		setIsLoading(true)
@@ -37,7 +58,7 @@ export default function HomeScreen() {
 			<View className="bg-white p-5 pt-14 border-b border-[#e0e0e0]">
 				<Text className="text-3xl text-[#1a1a1a] font-bold">Inspections</Text>
 				<Text className="text-sm text-[#666] mt-1">
-					{inspections.length} {inspections.length === 1 ? "Inspection" : "Inspections"}
+					{inspectionsCount} {inspectionsCount === 1 ? "Inspection" : "Inspections"}
 				</Text>
 			</View>
 

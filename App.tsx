@@ -1,22 +1,18 @@
-import { Text, View, StatusBar, ActivityIndicator } from "react-native"
+import { StatusBar } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 import RootNavigator from "./src/navigation/RootNavigator"
-import { useAuth } from "./src/hooks/useAuth"
 import "./global.css"
-import { AuthProvider } from "./src/context/AuthContext"
+import { BootProvider } from "./src/context/BootContext"
 
-function AppShell() {
-	const { isReady } = useAuth()
+/*
+TODO: defensive DB initialization - on app start:
+- handle DB init failure explicitly
+- log error
+- fail loudly (don't silently continue)
+** offline apps die from silent DB failure
+*/
 
-	if (!isReady) {
-		return (
-			<View className="flex-1 justify-center items-center bg-background">
-				<ActivityIndicator size="large" color="#007AFF" />
-				<Text className="mt-3 text-base text-[#666] font-bold">Loading...</Text>
-			</View>
-		)
-	}
-
+function AppContent() {
 	return (
 		<SafeAreaProvider>
 			<StatusBar barStyle="dark-content" />
@@ -27,8 +23,8 @@ function AppShell() {
 
 export default function App() {
 	return (
-		<AuthProvider>
-			<AppShell />
-		</AuthProvider>
+		<BootProvider>
+			<AppContent />
+		</BootProvider>
 	)
 }

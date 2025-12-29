@@ -1,5 +1,3 @@
-import InspectionRepository from "@/src/database/repositories/InspectionRepository"
-import { useAuth } from "@/src/hooks/useAuth"
 import { useInspections } from "@/src/hooks/useInspections"
 import { useNavigation } from "@react-navigation/native"
 import clsx from "clsx"
@@ -25,9 +23,16 @@ const MOCK_TEMPLATE = {
 	],
 }
 
+/*
+TODO: Validate templateId existence
+- templateId must exist and be non-empty
+- if template not found -> block creation
+** this avoids "orphan inspections"
+*/
+
+
 export default function CreateInspectionScreen() {
 	const navigation = useNavigation()
-	const { userId } = useAuth()
 	const [isLoading, setIsLoading] = useState(false)
 	const { createInspection } = useInspections()
 
@@ -50,6 +55,16 @@ export default function CreateInspectionScreen() {
 	const handleSaveDraft = async () => {
 		if (!facilityName.trim()) {
 			Alert.alert("Error", "Please enter a facility name")
+			return
+		}
+
+		if (!facilityAddress.trim()) {
+			Alert.alert("Error", "Please enter facility address")
+			return
+		}
+
+		if (!Object.keys(responses).length) {
+			Alert.alert("Error", "Inspection must have at least one response")
 			return
 		}
 

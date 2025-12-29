@@ -61,8 +61,6 @@ class AuthAPI {
 			await SecureStore.deleteItemAsync("accessToken")
 			await SecureStore.deleteItemAsync("refreshToken")
 			await SecureStore.deleteItemAsync("user")
-
-			console.log("Store cleared!")
 		}
 	}
 

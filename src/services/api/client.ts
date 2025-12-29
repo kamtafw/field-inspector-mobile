@@ -13,8 +13,6 @@ const api: AxiosInstance = axios.create({
 	timeout: TIMEOUT_DURATION,
 })
 
-console.log("BASE URL:", API_BASE_URL)
-
 // Request interceptor: Add token
 api.interceptors.request.use(
 	async (config: InternalAxiosRequestConfig) => {

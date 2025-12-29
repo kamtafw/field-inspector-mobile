@@ -36,19 +36,20 @@ export default appSchema({
 				{ name: "facility_name", type: "string" },
 				{ name: "facility_address", type: "string" },
 
-				{ name: "responses", type: "string" }, //JSON: {item_id: {value, notes}}
+				{ name: "responses", type: "string" }, //JSON payload: {item_id: {value, notes}}
 
 				{ name: "version", type: "number" },
-				{ name: "inspector_id", type: "string" },
+				{ name: "inspector_id", type: "string", isIndexed: true },
 				{ name: "status", type: "string", isIndexed: true }, // "draft" | "submitted" | "synced" | "conflict"
 
 				{ name: "is_synced", type: "boolean" },
-				// { name: "synced_at", type: "number", isOptional: true },
+				// { name: "synced_ts", type: "number", isOptional: true },
 				// { name: "synced_error", type: "string", isOptional: true },
 
-				{ name: "created_at", type: "number" },
-				{ name: "updated_at", type: "number" },
-				// { name: "submitted_at", type: "number", isOptional: true },
+				{ name: "created_ts", type: "number" },
+				{ name: "updated_ts", type: "number" },
+				{ name: "last_action_ts", type: "number" },
+				// { name: "submitted_ts", type: "number", isOptional: true },
 			],
 		}),
 	],
