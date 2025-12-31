@@ -22,6 +22,7 @@ export async function initDatabase(): Promise<Database> {
 
 		return database
 	} catch (error) {
+		console.error("Database Initialization Error:", error)
 		database = null
 		throw error
 	}

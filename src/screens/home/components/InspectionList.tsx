@@ -15,8 +15,8 @@ function InspectionList({ inspections }: { inspections: Inspection[] }) {
 	return (
 		<FlatList
 			data={inspections}
-			contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
 			keyExtractor={(item) => item.id}
+			contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
 			renderItem={({ item }) => <InspectionCard inspection={item} />}
 		/>
 	)

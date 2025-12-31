@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react"
-import { View, Text, TouchableOpacity, ActivityIndicator, Platform } from "react-native"
+import {
+	View,
+	Text,
+	TouchableOpacity,
+	ActivityIndicator,
+	Platform,
+	FlatList,
+	RefreshControl,
+} from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import clsx from "clsx"
 import { useAuth } from "@/src/hooks/useAuth"
@@ -9,6 +17,9 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import type { MainStackParamList } from "@/src/navigation/types"
 import { Feather } from "@expo/vector-icons"
 import InspectionRepository from "@/src/database/repositories/InspectionRepository"
+import Inspection from "@/src/database/models/Inspection"
+import { withObservables } from "@nozbe/watermelondb/react"
+import InspectionCard from "./components/InspectionCard"
 
 /*
 TODO: HomeScreen must:
@@ -23,20 +34,17 @@ TODO: sort inspections by:
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<MainStackParamList, "Home">
 
-export default function HomeScreen() {
-	const [isLoading, setIsLoading] = useState(false)
+function HomeScreenComponent({ inspections }: { inspections: Inspection[] }) {
 	const { logout } = useAuth()
 	const navigation = useNavigation<HomeScreenNavigationProp>()
-	const [inspectionsCount, setInspectionsCount] = useState(0)
+	const [refreshing, setRefreshing] = useState(false)
+	const [isLoading, setIsLoading] = useState(false)
 
-	useEffect(() => {
-		const initCount = async () => {
-			const count = await InspectionRepository.collection.query().fetchCount()
-			setInspectionsCount(count)
-		}
-
-		initCount()
-	}, [])
+	const onRefresh = async () => {
+		setRefreshing(true)
+		// TODO: trigger sync
+		setTimeout(() => setRefreshing(false), 2000)
+	}
 
 	const handleLogout = async () => {
 		setIsLoading(true)
@@ -53,17 +61,45 @@ export default function HomeScreen() {
 		navigation.navigate("CreateInspection")
 	}
 
+	const renderEmpty = () => (
+		<View className="items-center justify-center py-20">
+			<Text className="text-[64px] mb-4">📋</Text>
+			<Text className="text-xl text-[#1a1a1a] font-semibold mb-2">No inspections yet</Text>
+			<Text className="text-sm text-[#666] text-center px-10">
+				Tap the + button to create your first inspection
+			</Text>
+		</View>
+	)
+
+	if (inspections === null) {
+		return (
+			<View className="flex-1 justify-center items-center bg-background">
+				<ActivityIndicator size="large" color="#007AFF" />
+				<Text className="mt-3 text-[#666] text-base">Loading inspections...</Text>
+			</View>
+		)
+	}
+
+	const isEmpty = inspections.length === 0
+
 	return (
 		<SafeAreaView className="flex-1 bg-background">
 			<View className="bg-white p-5 pt-14 border-b border-[#e0e0e0]">
 				<Text className="text-3xl text-[#1a1a1a] font-bold">Inspections</Text>
 				<Text className="text-sm text-[#666] mt-1">
-					{inspectionsCount} {inspectionsCount === 1 ? "Inspection" : "Inspections"}
+					{inspections.length} {inspections.length === 1 ? "Inspection" : "Inspections"}
 				</Text>
 			</View>
 
 			{/* Inspection List */}
-			<InspectionList />
+			<FlatList
+				data={inspections}
+				keyExtractor={(item) => item.id}
+				renderItem={({ item }) => <InspectionCard inspection={item} />}
+				contentContainerStyle={{ padding: 16, paddingBottom: 80, flexGrow: isEmpty ? 1 : 0 }}
+				ListEmptyComponent={renderEmpty}
+				refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+			/>
 
 			{/* Add Inspection Button */}
 			<TouchableOpacity
@@ -92,3 +128,12 @@ export default function HomeScreen() {
 		</SafeAreaView>
 	)
 }
+
+const enhance = withObservables([], () => {
+	const inspections$ = InspectionRepository.collection.query().observe()
+
+	return { inspections: inspections$ }
+})
+
+const HomeScreen = enhance(HomeScreenComponent)
+export default HomeScreen

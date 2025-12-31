@@ -47,6 +47,7 @@ api.interceptors.response.use(
 					originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
 					return api(originalRequest)
 				} catch {
+					console.error("API Response Error:", error)
 					// Refresh failed, force re-login
 					// TODO: navigate to login screen
 				}
