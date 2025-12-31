@@ -44,7 +44,7 @@ export default appSchema({
 
 				{ name: "is_synced", type: "boolean" },
 				{ name: "synced_ts", type: "number", isOptional: true },
-				{ name: "synced_error", type: "string", isOptional: true },
+				{ name: "sync_error", type: "string", isOptional: true },
 
 				{ name: "created_ts", type: "number" },
 				{ name: "updated_ts", type: "number" },

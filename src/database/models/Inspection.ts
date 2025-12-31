@@ -36,13 +36,13 @@ export default class Inspection extends Model {
 
 	@field("is_synced") isSynced!: boolean
 	@field("synced_ts") syncedTs?: number
-	@text("synced_error") syncedError?: string
+	@text("sync_error") syncError?: string
 
 	@field("created_ts") createdTs!: number
 	@field("updated_ts") updatedTs!: number
 	@field("last_action_ts") lastActionTs!: number
 	@field("submitted_ts") submittedTs?: number
-	
+
 	@readonly @date("created_at") createdAt!: Date
 	@readonly @date("updated_at") updatedAt!: Date
 

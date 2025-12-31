@@ -1,9 +1,8 @@
-// Data access layer: abstraction over WatermelonDB
-
 import database from ".."
 import Inspection, { InspectionResponse } from "../models/Inspection"
 import { v4 as uuid4 } from "uuid"
 import { Q } from "@nozbe/watermelondb"
+import SyncOperation from "../models/SyncOperations"
 
 /*
 TODO: before saving: const responses = JSON.parse(JSON.stringify(input.responses))
@@ -34,23 +33,18 @@ export interface UpdateInspectionInput {
 
 class InspectionRepository {
 	collection = database.get<Inspection>("inspections")
-	// private syncCollection = database.get<SyncOperation>('sync_operation')
+	private syncCollection = database.get<SyncOperation>("sync_operation")
 
 	/* READS */
-
-	// Get all inspections for a user
 	async getAll(userId: string): Promise<Inspection[]> {
+		// Get all inspections for a user
 		return await this.collection
 			.query(Q.where("inspector_id", userId), Q.sortBy("created_at", Q.desc))
 			.fetch()
-		// return await this.collection.query().fetch()
 	}
 
-	// Get all unsynced inspections
-	async getUnsynced(): Promise<Inspection[]> {}
-
-	// Find inspection by local ID
 	async getById(id: string): Promise<Inspection | null> {
+		// Find inspection by local ID
 		try {
 			return await this.collection.find(id)
 		} catch {
@@ -58,11 +52,20 @@ class InspectionRepository {
 		}
 	}
 
-	// Find inspection by remote ID
 	async getByRemoteId(remoteId: string): Promise<Inspection | null> {
+		// Find inspection by remote ID (server UUID)
 		const records = await this.collection.query(Q.where("remote_id", remoteId)).fetch()
 		return records.at(0) || null
 	}
+
+	async getUnsynced(): Promise<Inspection[]> {
+		// Get all unsynced inspections
+		return await this.collection
+			.query(Q.where("is_synced", false), Q.where("status", Q.oneOf(["draft", "conflict"])))
+			.fetch()
+	}
+
+	/* WRITES */
 
 	// Create new inspection (offline-first) & queues sync operation in background
 	async create(data: CreateInspectionPayload, userId: string): Promise<Inspection> {
@@ -123,17 +126,68 @@ class InspectionRepository {
 		return updated
 	}
 
-	async markAsSynced(): Promise<void> {}
+	async markSynced(inspectionId: string, remoteId: string, serverVersion: number): Promise<void> {
+		// Mark inspection as synced
+		const inspection = await this.getById(inspectionId)
+		if (!inspection) return
 
-	async markAsSyncFailed(): Promise<void> {}
+		await database.write(async () => {
+			await inspection.update((record) => {
+				record.remoteId = remoteId
+				record.isSynced = true
+				record.syncedTs = Date.now()
+				record.version = serverVersion
+				record.status = "synced"
+				record.syncError = undefined
+			})
+		})
+	}
 
-	// Delete inspection (local only)
+	async markSyncError(inspectionId: string, error: string): Promise<void> {
+		// Mark inspection as having sync error
+		const inspection = await this.getById(inspectionId)
+		if (!inspection) return
+
+		await database.write(async () => {
+			await inspection.update((record) => {
+				record.syncError = error
+				record.isSynced = false
+			})
+		})
+	}
+
 	async delete(inspectionId: string): Promise<void> {
+		// Delete inspection (local only for now)
 		const inspection = await this.getById(inspectionId)
 		if (!inspection) return
 
 		await database.write(async () => {
 			await inspection.markAsDeleted()
+		})
+	}
+
+	private async queueSyncOperation(
+		inspection: Inspection,
+		operationType: "CREATE_INSPECTION" | "UPDATE_INSPECTION"
+	): Promise<void> {
+		// Queue a sync operation
+		const idempotencyKey = uuid4()
+
+		await this.syncCollection.create((record) => {
+			record.operationType = operationType
+			record.entityId = inspection.id
+			record.entityType = "inspection"
+			record.idempotencyKey = idempotencyKey
+			record.payload = JSON.stringify({
+				remoteId: inspection.remoteId,
+				templateId: inspection.templateId,
+				facilityName: inspection.facilityName,
+				facilityAddress: inspection.facilityAddress,
+				responses: inspection.responses,
+				status: inspection.status,
+				version: inspection.version,
+			})
+			record.status = "pending"
 		})
 	}
 }
