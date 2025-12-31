@@ -23,7 +23,7 @@ is_synced → transport state
 export default class Inspection extends Model {
 	static table = "inspections"
 
-	// @text("remote_id") remoteId?: string
+	@text("remote_id") remoteId?: string
 	@text("template_id") templateId!: string
 	@text("facility_address") facilityAddress!: string
 	@text("facility_name") facilityName!: string
@@ -35,13 +35,13 @@ export default class Inspection extends Model {
 	@field("status") status!: "draft" | "submitted" | "synced" | "conflict"
 
 	@field("is_synced") isSynced!: boolean
-	// @field("synced_ts") syncedTs?: number
-	// @text("synced_error") syncedError?: string
+	@field("synced_ts") syncedTs?: number
+	@text("synced_error") syncedError?: string
 
 	@field("created_ts") createdTs!: number
 	@field("updated_ts") updatedTs!: number
 	@field("last_action_ts") lastActionTs!: number
-	// @field("submitted_ts") submittedTs?: number
+	@field("submitted_ts") submittedTs?: number
 	
 	@readonly @date("created_at") createdAt!: Date
 	@readonly @date("updated_at") updatedAt!: Date

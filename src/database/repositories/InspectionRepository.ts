@@ -18,7 +18,7 @@ TODO: avoid partial writes; ensure:
 ** this prevents corrupted rows
 */
 
-export interface CreateInspectionInput {
+export interface CreateInspectionPayload {
 	templateId: string
 	facilityName: string
 	facilityAddress: string
@@ -36,16 +36,44 @@ class InspectionRepository {
 	collection = database.get<Inspection>("inspections")
 	// private syncCollection = database.get<SyncOperation>('sync_operation')
 
+	/* READS */
+
+	// Get all inspections for a user
+	async getAll(userId: string): Promise<Inspection[]> {
+		return await this.collection
+			.query(Q.where("inspector_id", userId), Q.sortBy("created_at", Q.desc))
+			.fetch()
+		// return await this.collection.query().fetch()
+	}
+
+	// Get all unsynced inspections
+	async getUnsynced(): Promise<Inspection[]> {}
+
+	// Find inspection by local ID
+	async getById(id: string): Promise<Inspection | null> {
+		try {
+			return await this.collection.find(id)
+		} catch {
+			return null
+		}
+	}
+
+	// Find inspection by remote ID
+	async getByRemoteId(remoteId: string): Promise<Inspection | null> {
+		const records = await this.collection.query(Q.where("remote_id", remoteId)).fetch()
+		return records.at(0) || null
+	}
+
 	// Create new inspection (offline-first) & queues sync operation in background
-	async create(input: CreateInspectionInput, userId: string): Promise<Inspection> {
+	async create(data: CreateInspectionPayload, userId: string): Promise<Inspection> {
 		const now = Date.now()
 
 		const inspection = await database.write(async () => {
 			const newInspection = await this.collection.create((record) => {
-				record.templateId = input.templateId
-				record.facilityName = input.facilityName
-				record.facilityAddress = input.facilityAddress
-				record.responses = input.responses
+				record.templateId = data.templateId
+				record.facilityName = data.facilityName
+				record.facilityAddress = data.facilityAddress
+				record.responses = data.responses
 
 				record.status = "draft"
 				record.version = 1
@@ -65,7 +93,7 @@ class InspectionRepository {
 
 	// Update existing inspection & Automatically queues sync if status changes to 'submitted'
 	async update(inspectionId: string, input: UpdateInspectionInput): Promise<Inspection> {
-		const inspection = await this.findById(inspectionId)
+		const inspection = await this.getById(inspectionId)
 		if (!inspection) {
 			throw new Error(`Inspection ${inspectionId} not found`)
 		}
@@ -95,32 +123,13 @@ class InspectionRepository {
 		return updated
 	}
 
-	// Find inspection by local ID
-	async findById(id: string): Promise<Inspection | null> {
-		try {
-			return await this.collection.find(id)
-		} catch {
-			return null
-		}
-	}
+	async markAsSynced(): Promise<void> {}
 
-	// Find inspection by remote ID
-	async findByRemoteId(remoteId: string): Promise<Inspection | null> {
-		const records = await this.collection.query(Q.where("remote_id", remoteId)).fetch()
-		return records.at(0) || null
-	}
-
-	// Get all inspections for a user
-	async findAll(userId: string): Promise<Inspection[]> {
-		return await this.collection
-			.query(Q.where("inspector_id", userId), Q.sortBy("created_at", Q.desc))
-			.fetch()
-		// return await this.collection.query().fetch()
-	}
+	async markAsSyncFailed(): Promise<void> {}
 
 	// Delete inspection (local only)
 	async delete(inspectionId: string): Promise<void> {
-		const inspection = await this.findById(inspectionId)
+		const inspection = await this.getById(inspectionId)
 		if (!inspection) return
 
 		await database.write(async () => {

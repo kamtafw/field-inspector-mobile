@@ -31,7 +31,7 @@ export default appSchema({
 		tableSchema({
 			name: "inspections",
 			columns: [
-				// { name: "remote_id", type: "string", isOptional: true }, // null until synced
+				{ name: "remote_id", type: "string", isOptional: true }, // null until synced
 				{ name: "template_id", type: "string", isIndexed: true },
 				{ name: "facility_name", type: "string" },
 				{ name: "facility_address", type: "string" },
@@ -43,13 +43,29 @@ export default appSchema({
 				{ name: "status", type: "string", isIndexed: true }, // "draft" | "submitted" | "synced" | "conflict"
 
 				{ name: "is_synced", type: "boolean" },
-				// { name: "synced_ts", type: "number", isOptional: true },
-				// { name: "synced_error", type: "string", isOptional: true },
+				{ name: "synced_ts", type: "number", isOptional: true },
+				{ name: "synced_error", type: "string", isOptional: true },
 
 				{ name: "created_ts", type: "number" },
 				{ name: "updated_ts", type: "number" },
 				{ name: "last_action_ts", type: "number" },
-				// { name: "submitted_ts", type: "number", isOptional: true },
+				{ name: "submitted_ts", type: "number", isOptional: true },
+			],
+		}),
+
+		tableSchema({
+			name: "sync_operations",
+			columns: [
+				{ name: "operation_type", type: "string", isIndexed: true }, // CREATE_INSPECTION | UPDATE_INSPECTION
+				{ name: "entity_id", type: "string", isIndexed: true }, // local ID of inspection
+				{ name: "entity_type", type: "string" },
+				{ name: "payload", type: "string" }, // JSON with all data needed to sync
+				{ name: "idempotency_key", type: "string" }, // UUID for deduplication
+
+				{ name: "status", type: "string", isIndexed: true }, // pending | in_progress | completed | failed
+
+				{ name: "created_ts", type: "number" },
+				{ name: "completed_ts", type: "number", isOptional: true },
 			],
 		}),
 	],
