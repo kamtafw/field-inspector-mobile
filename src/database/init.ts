@@ -3,6 +3,7 @@ import SQLiteAdapter from "@nozbe/watermelondb/adapters/sqlite"
 import schema from "./schema"
 import migrations from "./migrations"
 import Inspection from "./models/Inspection"
+import SyncOperation from "./models/SyncOperations"
 
 let database: Database | null = null
 
@@ -18,7 +19,7 @@ export async function initDatabase(): Promise<Database> {
 			},
 		})
 
-		database = new Database({ adapter, modelClasses: [Inspection] })
+		database = new Database({ adapter, modelClasses: [Inspection, SyncOperation] })
 
 		return database
 	} catch (error) {

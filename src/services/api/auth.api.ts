@@ -39,7 +39,7 @@ class AuthAPI {
 
 	// Refresh access token
 	async refreshToken(refreshToken: string): Promise<RefreshResponse> {
-		const response = await api.post<RefreshResponse>("/auth/refresh", { refresh: refreshToken })
+		const response = await api.post<RefreshResponse>("/auth/refresh/", { refresh: refreshToken })
 		// update access token
 		await SecureStore.setItemAsync("accessToken", response.data.access)
 

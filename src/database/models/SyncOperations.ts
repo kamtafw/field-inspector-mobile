@@ -9,7 +9,7 @@ export default class SyncOperation extends Model {
 	static table = "sync_operations"
 
 	@field("operation_type") operationType!: OperationType
-	@text("entity_id") entityId!: string
+	@text("entity_id") entityId!: string // Inspection local id
 	@field("entity_type") entityType!: "inspection"
 
 	@json("payload", (json) => json) payload!: any
@@ -20,8 +20,8 @@ export default class SyncOperation extends Model {
 	@field("created_ts") createdTs!: number
 	@field("completed_ts") completedTs!: number
 
-	@readonly @date("created_at") createdAt!: Date
-	@readonly @date("completed_at") completedAt!: Date
+	@readonly @date("created_ts") createdAt!: Date
+	@readonly @date("completed_ts") completedAt!: Date
 
 	get isReady(): boolean {
 		if (this.status !== "pending" && this.status !== "failed") {

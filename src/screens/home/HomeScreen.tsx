@@ -20,6 +20,7 @@ import InspectionRepository from "@/src/database/repositories/InspectionReposito
 import Inspection from "@/src/database/models/Inspection"
 import { withObservables } from "@nozbe/watermelondb/react"
 import InspectionCard from "./components/InspectionCard"
+import SyncEngine from "@/src/services/sync/SyncEngine"
 
 /*
 TODO: HomeScreen must:
@@ -39,6 +40,7 @@ function HomeScreenComponent({ inspections }: { inspections: Inspection[] }) {
 	const navigation = useNavigation<HomeScreenNavigationProp>()
 	const [refreshing, setRefreshing] = useState(false)
 	const [isLoading, setIsLoading] = useState(false)
+	const [isSyncing, setIsSyncing] = useState(false)
 
 	const onRefresh = async () => {
 		setRefreshing(true)
@@ -54,6 +56,18 @@ function HomeScreenComponent({ inspections }: { inspections: Inspection[] }) {
 			console.error("Logout failed:", err)
 		} finally {
 			setIsLoading(false)
+		}
+	}
+
+	const handleSync = async () => {
+		setIsSyncing(true)
+		try {
+			await SyncEngine.initialize()
+			await SyncEngine.process()
+		} catch (err: any) {
+			console.error("Sync failed:", err)
+		} finally {
+			setIsSyncing(false)
 		}
 	}
 
@@ -111,6 +125,19 @@ function HomeScreenComponent({ inspections }: { inspections: Inspection[] }) {
 				onPress={handleCreateNew}
 			>
 				<Feather name="plus" color="#FFF" size={20} />
+			</TouchableOpacity>
+
+			{/* Sync Button */}
+			<TouchableOpacity
+				className={clsx("bg-green-600 m-6 p-4 rounded-lg items-center", isSyncing && "opacity-60")}
+				onPress={handleSync}
+				disabled={isSyncing}
+			>
+				{isSyncing ? (
+					<ActivityIndicator color="#fff" />
+				) : (
+					<Text className="text-white text-base font-semibold">Sync Operations</Text>
+				)}
 			</TouchableOpacity>
 
 			{/* Logout Button */}

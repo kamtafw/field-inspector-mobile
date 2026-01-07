@@ -13,7 +13,7 @@ import {
 } from "react-native"
 
 const MOCK_TEMPLATE = {
-	id: "template-1",
+	id: "01065cfdc4f845dea92d231acd25f822",
 	name: "Fire Safety Inspection",
 	checklist_items: [
 		{ id: "item_1", question: "Are fire extinguishers present and accessible?", type: "boolean" },

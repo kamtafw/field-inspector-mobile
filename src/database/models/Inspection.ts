@@ -43,9 +43,6 @@ export default class Inspection extends Model {
 	@field("last_action_ts") lastActionTs!: number
 	@field("submitted_ts") submittedTs?: number
 
-	@readonly @date("created_at") createdAt!: Date
-	@readonly @date("updated_at") updatedAt!: Date
-
 	get needsSync(): boolean {
 		// helper method: is this ready to sync?
 		return !this.isSynced && this.status !== "draft"

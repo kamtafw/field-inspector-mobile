@@ -1,6 +1,7 @@
 import { Q } from "@nozbe/watermelondb"
 import database from ".."
 import SyncOperation from "../models/SyncOperations"
+import InspectionRepository from "./InspectionRepository"
 
 class SyncRepository {
 	private collection = database.get<SyncOperation>("sync_operations")
@@ -48,11 +49,14 @@ class SyncRepository {
 		// Mark operation as completed
 		const operation = await this.collection.find(operationId)
 
+		console.log("MARKING operation as complete")
 		await database.write(async () => {
 			await operation.update((record) => {
 				record.status = "completed"
+				record.completedTs = Date.now()
 			})
 		})
+		console.log("MARKED operation as synced")
 	}
 
 	async markFailed(operationId: string): Promise<void> {
@@ -66,3 +70,5 @@ class SyncRepository {
 		})
 	}
 }
+
+export default new SyncRepository()

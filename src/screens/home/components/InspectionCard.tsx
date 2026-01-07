@@ -2,7 +2,8 @@ import { Text, TouchableOpacity, View } from "react-native"
 import database from "@/src/database"
 import Inspection from "@/src/database/models/Inspection"
 import { withObservables } from "@nozbe/watermelondb/react"
-import clsx from "clsx"
+import InspectionsAPI from "@/src/services/api/inspections.api"
+import InspectionRepository from "@/src/database/repositories/InspectionRepository"
 
 interface InspectionProp {
 	inspection: Inspection
@@ -34,14 +35,29 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function InspectionCard({ inspection }: InspectionProp) {
-	const handleDeleteRow = async () => {
-		database.write(async () => {
-			await inspection.markAsDeleted()
-		})
+	const handleSyncInspection = async () => {
+		const response = await InspectionsAPI.create(
+			{
+				template_id: inspection.templateId,
+				facility_name: inspection.facilityName,
+				facility_address: inspection.facilityAddress,
+				responses: inspection.responses,
+				status: "draft",
+				version: inspection.version,
+			},
+			"e0df5cf5-f17e-4118-8b41-ba9c8528afe8"
+		)
+
+		await InspectionRepository.markSynced(inspection.id, response.id, response.version)
+
+		console.log("It worked!")
 	}
 
 	return (
-		<TouchableOpacity className="bg-white rounded-xl p-4 mb-3 shadow-md">
+		<TouchableOpacity
+			onPress={handleSyncInspection}
+			className="bg-white rounded-xl p-4 mb-3 shadow-md"
+		>
 			<View className="flex-row mb-2 items-center justify-between">
 				<Text className="flex-1 text-lg font-semibold text-[#1a1a1a]">
 					{inspection.facilityName}

@@ -1,6 +1,7 @@
+import "react-native-get-random-values"
+import { v4 as uuid4 } from "uuid"
 import database from ".."
 import Inspection, { InspectionResponse } from "../models/Inspection"
-import { v4 as uuid4 } from "uuid"
 import { Q } from "@nozbe/watermelondb"
 import SyncOperation from "../models/SyncOperations"
 
@@ -33,7 +34,7 @@ export interface UpdateInspectionInput {
 
 class InspectionRepository {
 	collection = database.get<Inspection>("inspections")
-	private syncCollection = database.get<SyncOperation>("sync_operation")
+	private syncCollection = database.get<SyncOperation>("sync_operations")
 
 	/* READS */
 	async getAll(userId: string): Promise<Inspection[]> {
@@ -88,8 +89,14 @@ class InspectionRepository {
 				record.lastActionTs = now
 			})
 
+			await this.queueSyncOperation(newInspection, "CREATE_INSPECTION")
+
+			console.log("NEW-INSPECTION  created", newInspection.id)
+
 			return newInspection
 		})
+
+		console.log("INSPECTION  created", inspection.id)
 
 		return inspection
 	}
@@ -101,24 +108,26 @@ class InspectionRepository {
 			throw new Error(`Inspection ${inspectionId} not found`)
 		}
 
-		// const shouldQueueSync = input.status === "submitted" && inspection.status === "draft"
+		const shouldQueueSync = input.status === "submitted" && inspection.status === "draft"
 
 		const updated = await database.write(async () => {
 			const updatedRecord = await inspection.update((record) => {
 				if (input.facilityName) record.facilityName = input.facilityName
-				// if (input.facilityAddress) record.facilityAddress = input.facilityAddress
-				// if (input.responses) record.responses = input.responses
+				if (input.facilityAddress) record.facilityAddress = input.facilityAddress
+				if (input.responses) record.responses = input.responses
 				if (input.status) {
 					record.status = input.status
-					// if (input.status === 'submitted') record.submittedAt = Date.now()
+					if (input.status === "submitted") {
+						record.submittedTs = Date.now()
+					}
 				}
 				// version increment only after successful sync
 			})
 
 			// queue syncing operation if submitting
-			// if (shouldQueueSync) {
-			// 	await this.queueSyncOperation(updatedRecord, "UPDATE_INSPECTION")
-			// }
+			if (shouldQueueSync) {
+				await this.queueSyncOperation(updatedRecord, "UPDATE_INSPECTION")
+			}
 
 			return updatedRecord
 		})
@@ -131,6 +140,8 @@ class InspectionRepository {
 		const inspection = await this.getById(inspectionId)
 		if (!inspection) return
 
+		console.log("inspection", inspection)
+
 		await database.write(async () => {
 			await inspection.update((record) => {
 				record.remoteId = remoteId
@@ -138,7 +149,6 @@ class InspectionRepository {
 				record.syncedTs = Date.now()
 				record.version = serverVersion
 				record.status = "synced"
-				record.syncError = undefined
 			})
 		})
 	}
@@ -146,14 +156,23 @@ class InspectionRepository {
 	async markSyncError(inspectionId: string, error: string): Promise<void> {
 		// Mark inspection as having sync error
 		const inspection = await this.getById(inspectionId)
-		if (!inspection) return
+		if (!inspection) {
+			console.warn(`markSyncError: inspection ${inspectionId} not found`)
+			return
+		}
 
-		await database.write(async () => {
-			await inspection.update((record) => {
-				record.syncError = error
-				record.isSynced = false
+		try {
+			await database.write(async () => {
+				await inspection.update((record) => {
+					record.syncError = error
+					record.isSynced = false
+				})
 			})
-		})
+		} catch (err: any) {
+			console.error(`markSyncError failed for ${inspectionId}:`, err, err?.stack)
+			console.error("inspection raw:", (inspection as any)?._raw)
+			throw err
+		}
 	}
 
 	async delete(inspectionId: string): Promise<void> {

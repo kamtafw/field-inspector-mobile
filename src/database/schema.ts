@@ -3,7 +3,7 @@
 import { appSchema, tableSchema } from "@nozbe/watermelondb"
 
 export default appSchema({
-	version: 2,
+	version: 7,
 	tables: [
 		tableSchema({
 			name: "users",
@@ -11,8 +11,8 @@ export default appSchema({
 				{ name: "email", type: "string", isIndexed: true },
 				{ name: "name", type: "string" },
 				{ name: "role", type: "string" }, // 'inspector' | 'manager'
-				{ name: "last_sync_at", type: "number", isOptional: true },
-				{ name: "created_at", type: "number" },
+				{ name: "last_sync_ts", type: "number", isOptional: true },
+				{ name: "created_ts", type: "number" },
 			],
 		}),
 
@@ -23,8 +23,8 @@ export default appSchema({
 				{ name: "name", type: "string" },
 				{ name: "version", type: "number" },
 				{ name: "checklist_items", type: "string" }, // JSON array
-				{ name: "synced_at", type: "number" },
-				{ name: "created_at", type: "number" },
+				{ name: "synced_ts", type: "number" },
+				{ name: "created_ts", type: "number" },
 			],
 		}),
 
@@ -58,7 +58,7 @@ export default appSchema({
 			columns: [
 				{ name: "operation_type", type: "string", isIndexed: true }, // CREATE_INSPECTION | UPDATE_INSPECTION
 				{ name: "entity_id", type: "string", isIndexed: true }, // local ID of inspection
-				{ name: "entity_type", type: "string" },
+				{ name: "entity_type", type: "string" }, // inspection | photo (not yet)
 				{ name: "payload", type: "string" }, // JSON with all data needed to sync
 				{ name: "idempotency_key", type: "string" }, // UUID for deduplication
 
