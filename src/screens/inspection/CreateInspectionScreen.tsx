@@ -1,4 +1,4 @@
-import { useInspections } from "@/src/hooks/useInspections"
+import useInspections from "@/src/hooks/useInspections"
 import { useNavigation } from "@react-navigation/native"
 import clsx from "clsx"
 import { useState } from "react"
@@ -30,13 +30,11 @@ TODO: Validate templateId existence
 ** this avoids "orphan inspections"
 */
 
-
 export default function CreateInspectionScreen() {
 	const navigation = useNavigation()
 	const [isLoading, setIsLoading] = useState(false)
-	const { createInspection } = useInspections()
+	const { createInspection, submitInspection, isCreating } = useInspections()
 
-	// form state
 	const [facilityName, setFacilityName] = useState("")
 	const [facilityAddress, setFacilityAddress] = useState("")
 	const [responses, setResponses] = useState<Record<string, any>>({})
@@ -58,15 +56,15 @@ export default function CreateInspectionScreen() {
 			return
 		}
 
-		if (!facilityAddress.trim()) {
-			Alert.alert("Error", "Please enter facility address")
-			return
-		}
+		// if (!facilityAddress.trim()) {
+		// 	Alert.alert("Error", "Please enter facility address")
+		// 	return
+		// }
 
-		if (!Object.keys(responses).length) {
-			Alert.alert("Error", "Inspection must have at least one response")
-			return
-		}
+		// if (!Object.keys(responses).length) {
+		// 	Alert.alert("Error", "Inspection must have at least one response")
+		// 	return
+		// }
 
 		setIsLoading(true)
 
@@ -96,7 +94,39 @@ export default function CreateInspectionScreen() {
 			return
 		}
 
-		console.log("Submit not Implemented")
+		// check if all required questions are answered
+		const unansweredCount = MOCK_TEMPLATE.checklist_items
+			.filter((item) => item.type === "boolean")
+			.filter((item) => responses[item.id] === undefined).length
+
+		if (unansweredCount > 0) {
+			Alert.alert(
+				"Incomplete",
+				`You have ${unansweredCount} unanswered question(s). Save as draft?`,
+				[
+					{ text: "Cancel", style: "cancel" },
+					{ text: "Save Draft", onPress: handleSaveDraft },
+				]
+			)
+			return
+		}
+
+		try {
+			const data = {
+				templateId: MOCK_TEMPLATE.id,
+				facilityName,
+				facilityAddress,
+				responses,
+			}
+
+			const inspection = await createInspection(data)
+			await submitInspection(inspection.id)
+
+			Alert.alert("Success", "Inspection created!")
+			navigation.goBack()
+		} catch (err: any) {
+			Alert.alert("Error", err.message)
+		}
 	}
 
 	return (
@@ -204,10 +234,11 @@ export default function CreateInspectionScreen() {
 			{/* Submit Button */}
 			<View className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-[#e0e0e0]">
 				<TouchableOpacity
-					className={clsx("bg-[#007AFF] p-4 rounded-lg items-center", isLoading && "opacity-50")}
-					disabled={isLoading}
+					onPress={handleSubmit}
+					className={clsx("bg-[#007AFF] p-4 rounded-lg items-center", isCreating && "opacity-50")}
+					disabled={isCreating}
 				>
-					{isLoading ? (
+					{isCreating ? (
 						<ActivityIndicator color="#fff" />
 					) : (
 						<Text className="text-white text-base font-semibold">Submit Inspection</Text>

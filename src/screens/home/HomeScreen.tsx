@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import {
 	View,
 	Text,
@@ -11,7 +11,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context"
 import clsx from "clsx"
 import { useAuth } from "@/src/hooks/useAuth"
-import InspectionList from "./components/InspectionList"
 import { useNavigation } from "@react-navigation/native"
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import type { MainStackParamList } from "@/src/navigation/types"
@@ -21,6 +20,7 @@ import Inspection from "@/src/database/models/Inspection"
 import { withObservables } from "@nozbe/watermelondb/react"
 import InspectionCard from "./components/InspectionCard"
 import SyncEngine from "@/src/services/sync/SyncEngine"
+import SyncStatusBar from "./components/SyncStatusBar"
 
 /*
 TODO: HomeScreen must:
@@ -98,11 +98,14 @@ function HomeScreenComponent({ inspections }: { inspections: Inspection[] }) {
 
 	return (
 		<SafeAreaView className="flex-1 bg-background">
-			<View className="bg-white p-5 pt-14 border-b border-[#e0e0e0]">
-				<Text className="text-3xl text-[#1a1a1a] font-bold">Inspections</Text>
-				<Text className="text-sm text-[#666] mt-1">
-					{inspections.length} {inspections.length === 1 ? "Inspection" : "Inspections"}
-				</Text>
+			<View>
+				<View className="bg-white p-5 pt-14 border-b border-[#e0e0e0]">
+					<Text className="text-3xl text-[#1a1a1a] font-bold">Inspections</Text>
+					<Text className="text-sm text-[#666] mt-1">
+						{inspections.length} {inspections.length === 1 ? "Inspection" : "Inspections"}
+					</Text>
+				</View>
+				<SyncStatusBar />
 			</View>
 
 			{/* Inspection List */}

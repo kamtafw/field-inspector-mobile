@@ -6,7 +6,7 @@ import schema from "./schema"
 import migrations from "./migrations"
 
 import Inspection from "./models/Inspection"
-import SyncOperation from "./models/SyncOperations"
+import SyncOperation from "./models/SyncOperation"
 
 // SQLite adapter to the underlying database
 const adapter = new SQLiteAdapter({

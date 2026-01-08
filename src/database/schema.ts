@@ -3,7 +3,7 @@
 import { appSchema, tableSchema } from "@nozbe/watermelondb"
 
 export default appSchema({
-	version: 7,
+	version: 9,
 	tables: [
 		tableSchema({
 			name: "users",
@@ -60,9 +60,14 @@ export default appSchema({
 				{ name: "entity_id", type: "string", isIndexed: true }, // local ID of inspection
 				{ name: "entity_type", type: "string" }, // inspection | photo (not yet)
 				{ name: "payload", type: "string" }, // JSON with all data needed to sync
-				{ name: "idempotency_key", type: "string" }, // UUID for deduplication
+				{ name: "idempotency_key", type: "string" },
 
 				{ name: "status", type: "string", isIndexed: true }, // pending | in_progress | completed | failed
+				{ name: "retry_count", type: "number" },
+				{ name: "max_retries", type: "number" },
+				{ name: "last_attempt_ts", type: "number", isOptional: true },
+				{ name: "next_retry_ts", type: "number", isOptional: true },
+				{ name: "error_message", type: "string", isOptional: true },
 
 				{ name: "created_ts", type: "number" },
 				{ name: "completed_ts", type: "number", isOptional: true },

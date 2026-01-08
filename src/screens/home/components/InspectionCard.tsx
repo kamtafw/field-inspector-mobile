@@ -49,8 +49,6 @@ function InspectionCard({ inspection }: InspectionProp) {
 		)
 
 		await InspectionRepository.markSynced(inspection.id, response.id, response.version)
-
-		console.log("It worked!")
 	}
 
 	return (

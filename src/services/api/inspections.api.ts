@@ -45,6 +45,14 @@ export interface InspectionResponseDTO {
 	updated_at: string // ISO date string
 }
 
+export interface ConflictResponse {
+	error: "conflict"
+	message: string
+	client_version: number
+	server_version: number
+	server_data: InspectionResponseDTO
+}
+
 export interface InspectionTemplateDTO {
 	id: string
 	name: string

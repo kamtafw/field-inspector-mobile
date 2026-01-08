@@ -3,7 +3,7 @@ import SQLiteAdapter from "@nozbe/watermelondb/adapters/sqlite"
 import schema from "./schema"
 import migrations from "./migrations"
 import Inspection from "./models/Inspection"
-import SyncOperation from "./models/SyncOperations"
+import SyncOperation from "./models/SyncOperation"
 
 let database: Database | null = null
 
