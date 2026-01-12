@@ -3,6 +3,8 @@ import { LoginCredentials } from "../services/api/auth.api"
 import AuthService from "../services/auth/AuthService"
 import { getRestoredAuth } from "../services/boot/steps/AuthStep"
 import SyncEngine from "../services/sync/SyncEngine"
+import { onLogout } from "../services/api/client"
+import { Alert } from "react-native"
 
 interface AuthContextValue {
 	isAuthenticated: boolean
@@ -36,22 +38,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		}
 	}, [])
 
+	// listen for automatic logout (token refresh failed)
+	useEffect(() => {
+		const unsubscribe = onLogout(() => {
+			console.log("🚪 Automatic logout triggered")
+
+			setIsAuthenticated(false)
+			setUserId(null)
+
+			Alert.alert("Session Expired", "Your session has expired. Please log in again.", [
+				{ text: "OK" },
+			])
+		})
+
+		return unsubscribe
+	}, [])
+
 	const login = async (credentials: LoginCredentials) => {
 		const data = await AuthService.login(credentials)
 		setIsAuthenticated(true)
 		setUserId(data.user.id)
 
 		// resume sync after login
-		// await SyncEngine.process()
+		await SyncEngine.process()
 	}
 
 	const logout = async () => {
 		await AuthService.logout()
 		setIsAuthenticated(false)
 		setUserId(null)
-
-		// stop sync on logout
-		// (SyncEngine will handle this automatically when no user)
 	}
 
 	return (

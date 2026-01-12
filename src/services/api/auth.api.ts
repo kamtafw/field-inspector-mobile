@@ -52,7 +52,7 @@ class AuthAPI {
 			const refreshToken = await SecureStore.getItemAsync("refreshToken")
 			if (refreshToken) {
 				// invalidate refresh token on server
-				await api.post("/auth/logout", { refresh: refreshToken })
+				await api.post("/auth/logout/", { refresh: refreshToken })
 			}
 		} catch (error) {
 			// ignore logout errors & proceed to clear tokens
