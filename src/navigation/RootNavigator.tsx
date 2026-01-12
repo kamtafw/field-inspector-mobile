@@ -4,8 +4,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack"
 import AuthNavigator from "./AuthNavigator"
 import MainNavigator from "./MainNavigator"
 import { RootStackParamList } from "./types"
-import { useAuth } from "../hooks/useAuth"
-import { AuthProvider } from "../context/AuthContext"
+import { useAuth } from "../providers/AuthProvider"
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
 

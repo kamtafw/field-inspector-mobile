@@ -33,7 +33,7 @@ export interface UpdateInspectionPayload {
 }
 
 class InspectionRepository {
-	private collection = database.get<Inspection>("inspections")
+	collection = database.get<Inspection>("inspections")
 	private syncCollection = database.get<SyncOperation>("sync_operations")
 
 	/** READS */

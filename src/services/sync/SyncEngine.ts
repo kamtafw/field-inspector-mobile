@@ -1,3 +1,4 @@
+import NetInfo from "@react-native-community/netinfo"
 import SyncOperation from "@/src/database/models/SyncOperation"
 import InspectionsAPI, { ConflictResponse } from "../api/inspections.api"
 import SyncRepository from "@/src/database/repositories/SyncRepository"
@@ -22,8 +23,22 @@ class SyncEngine {
 		console.log("🔄 SyncEngine: Initializing...")
 
 		// listen for network changes
+		NetInfo.addEventListener((state) => {
+			console.log("🌐 Network state changed:", state.isConnected)
 
-		// check if online and process pending operations
+			if (state.isConnected && !this.isProcessing) {
+				console.log("✅ Network available, triggering sync...")
+				this.process()
+			}
+		})
+
+		const netState = await NetInfo.fetch()
+		if (netState.isConnected) {
+			console.log("✅ Online at startup, processing queue...")
+			// await this.process()
+		} else {
+			console.log("📴 Offline at startup, waiting for network...")
+		}
 
 		// schedule automatic retry check every 5s
 		// this.scheduleRetryCheck()
@@ -47,10 +62,7 @@ class SyncEngine {
 		}, 5000)
 	}
 
-	/**
-	 * Process all pending sync operations
-	 * TODO: Call automatically when network becomes available
-	 */
+	/** Process all pending sync operations */
 	async process(): Promise<void> {
 		if (this.isProcessing) {
 			console.log("⏳ Already processing, skipping...")

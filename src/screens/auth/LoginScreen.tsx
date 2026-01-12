@@ -9,7 +9,7 @@ import {
 	View,
 } from "react-native"
 import { clsx } from "clsx"
-import { useAuth } from "@/src/hooks/useAuth"
+import { useAuth } from "@/src/providers/AuthProvider"
 
 export default function LoginScreen() {
 	const [email, setEmail] = useState(__DEV__ ? "admin@example.com" : "")

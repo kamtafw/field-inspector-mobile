@@ -17,6 +17,7 @@ const api: AxiosInstance = axios.create({
 api.interceptors.request.use(
 	async (config: InternalAxiosRequestConfig) => {
 		const token = await SecureStore.getItemAsync("accessToken")
+
 		if (token) {
 			config.headers.Authorization = `Bearer ${token}`
 		}
@@ -33,18 +34,21 @@ api.interceptors.response.use(
 
 		if (error.response?.status === 401 && !originalRequest._retry) {
 			originalRequest._retry = true
+
 			const refreshToken = await SecureStore.getItemAsync("refreshToken")
+
 			if (refreshToken) {
 				try {
 					const response = await axios.post(`${API_BASE_URL}/auth/refresh/`, {
 						refresh: refreshToken,
 					})
 
-					const newAccessToken = response.data.accessToken
-					await SecureStore.setItemAsync("accessToken", newAccessToken)
+					const accessToken = response.data.accessToken
+					await SecureStore.setItemAsync("accessToken", accessToken)
 
 					// retry original request
-					originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
+					originalRequest.headers.Authorization = `Bearer ${accessToken}`
+					
 					return api(originalRequest)
 				} catch {
 					console.error("API Response Error:", error)

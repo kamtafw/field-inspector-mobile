@@ -8,19 +8,20 @@ import {
 	FlatList,
 	RefreshControl,
 } from "react-native"
-import { SafeAreaView } from "react-native-safe-area-context"
 import clsx from "clsx"
-import { useAuth } from "@/src/hooks/useAuth"
-import { useNavigation } from "@react-navigation/native"
-import { NativeStackNavigationProp } from "@react-navigation/native-stack"
-import type { MainStackParamList } from "@/src/navigation/types"
 import { Feather } from "@expo/vector-icons"
-import InspectionRepository from "@/src/database/repositories/InspectionRepository"
-import Inspection from "@/src/database/models/Inspection"
+import { useNavigation } from "@react-navigation/native"
 import { withObservables } from "@nozbe/watermelondb/react"
+import { SafeAreaView } from "react-native-safe-area-context"
+import { NativeStackNavigationProp } from "@react-navigation/native-stack"
+
+import type { MainStackParamList } from "@/src/navigation/types"
 import InspectionCard from "./components/InspectionCard"
-import SyncEngine from "@/src/services/sync/SyncEngine"
 import SyncStatusBar from "./components/SyncStatusBar"
+import Inspection from "@/src/database/models/Inspection"
+import SyncEngine from "@/src/services/sync/SyncEngine"
+import InspectionRepository from "@/src/database/repositories/InspectionRepository"
+import { useAuth } from "@/src/providers/AuthProvider"
 
 /*
 TODO: HomeScreen must:
@@ -63,7 +64,7 @@ function HomeScreenComponent({ inspections }: { inspections: Inspection[] }) {
 		setIsSyncing(true)
 		try {
 			await SyncEngine.initialize()
-			await SyncEngine.process()
+			// await SyncEngine.process()
 		} catch (err: any) {
 			console.error("Sync failed:", err)
 		} finally {

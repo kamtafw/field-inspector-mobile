@@ -8,23 +8,44 @@ import SyncOperation from "./models/SyncOperation"
 let database: Database | null = null
 
 export async function initDatabase(): Promise<Database> {
-	if (database) return database
+	if (database) {
+		console.log("Database already initialized")
+		return database
+	}
 
 	try {
+		console.log("Initializing database...")
+
 		const adapter = new SQLiteAdapter({
 			schema,
 			// migrations,
+			jsi: true, // JSI for better performance
 			onSetUpError: (error) => {
+				console.error("Database setup error:", error)
 				throw error
 			},
 		})
 
-		database = new Database({ adapter, modelClasses: [Inspection, SyncOperation] })
+		database = new Database({
+			adapter,
+			modelClasses: [Inspection, SyncOperation],
+		})
 
+		console.log("✅ Database initialized successfully")
 		return database
 	} catch (error) {
-		console.error("Database Initialization Error:", error)
+		console.error("❌ Database initialization failed:", error)
 		database = null
 		throw error
 	}
 }
+
+export function getDatabase(): Database {
+	if (!database) {
+		throw new Error("Database not initialized. Call initDatabase() first.")
+	}
+
+	return database
+}
+
+export { database }

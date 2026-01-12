@@ -4,9 +4,9 @@ import InspectionRepository, {
 	CreateInspectionPayload,
 	UpdateInspectionPayload,
 } from "../database/repositories/InspectionRepository"
-import { useAuth } from "./useAuth"
 import database from "../database"
 import { Q } from "@nozbe/watermelondb"
+import { useAuth } from "../providers/AuthProvider"
 
 interface UseInspectionsReturn {
 	// data

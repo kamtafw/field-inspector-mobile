@@ -1,8 +1,10 @@
+import React from "react"
 import { StatusBar } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
+import { BootProvider } from "./src/providers/BootProvider"
+import { AuthProvider } from "./src/providers/AuthProvider"
 import RootNavigator from "./src/navigation/RootNavigator"
 import "./global.css"
-import { BootProvider } from "./src/context/BootContext"
 
 /*
 TODO: defensive DB initialization - on app start:
@@ -12,19 +14,15 @@ TODO: defensive DB initialization - on app start:
 ** offline apps die from silent DB failure
 */
 
-function AppContent() {
-	return (
-		<SafeAreaProvider>
-			<StatusBar barStyle="dark-content" />
-			<RootNavigator />
-		</SafeAreaProvider>
-	)
-}
-
 export default function App() {
 	return (
 		<BootProvider>
-			<AppContent />
+			<AuthProvider>
+				<SafeAreaProvider>
+					<StatusBar barStyle="dark-content" />
+					<RootNavigator />
+				</SafeAreaProvider>
+			</AuthProvider>
 		</BootProvider>
 	)
 }
