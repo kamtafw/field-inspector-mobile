@@ -14,14 +14,14 @@ import { useNavigation } from "@react-navigation/native"
 import { withObservables } from "@nozbe/watermelondb/react"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"
-
-import type { MainStackParamList } from "@/src/navigation/types"
+import SyncStatusBar from "@/src/components/features/SyncStatusBar"
+import { MainStackParamList } from "@/src/navigation/types"
 import InspectionCard from "./components/InspectionCard"
-import SyncStatusBar from "./components/SyncStatusBar"
 import Inspection from "@/src/database/models/Inspection"
 import SyncEngine from "@/src/services/sync/SyncEngine"
 import InspectionRepository from "@/src/database/repositories/InspectionRepository"
 import { useAuth } from "@/src/providers/AuthProvider"
+import NetworkStatusIndicator from "@/src/components/features/NetworkStatusIndicator"
 
 /*
 TODO: HomeScreen must:
@@ -99,8 +99,10 @@ function HomeScreenComponent({ inspections }: { inspections: Inspection[] }) {
 
 	return (
 		<SafeAreaView className="flex-1 bg-background">
-			<View>
-				<View className="bg-white p-5 pt-14 border-b border-[#e0e0e0]">
+			<NetworkStatusIndicator />
+
+			<View className="bg-white p-5 pt-14 border-b border-[#e0e0e0]">
+				<View>
 					<Text className="text-3xl text-[#1a1a1a] font-bold">Inspections</Text>
 					<Text className="text-sm text-[#666] mt-1">
 						{inspections.length} {inspections.length === 1 ? "Inspection" : "Inspections"}
