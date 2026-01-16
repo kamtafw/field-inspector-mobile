@@ -7,6 +7,7 @@ import migrations from "./migrations"
 
 import Inspection from "./models/Inspection"
 import SyncOperation from "./models/SyncOperation"
+import Conflict from "./models/Conflict"
 
 // SQLite adapter to the underlying database
 const adapter = new SQLiteAdapter({
@@ -20,7 +21,7 @@ const adapter = new SQLiteAdapter({
 
 const database = new Database({
 	adapter,
-	modelClasses: [Inspection, SyncOperation],
+	modelClasses: [Inspection, SyncOperation, Conflict],
 })
 
 export default database

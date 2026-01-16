@@ -3,7 +3,7 @@ import database from ".."
 import SyncOperation from "../models/SyncOperation"
 
 class SyncRepository {
-	private collection = database.get<SyncOperation>("sync_operations")
+	collection = database.get<SyncOperation>("sync_operations")
 
 	/** READS */
 

@@ -215,6 +215,7 @@ class InspectionsAPI {
 			success: boolean
 			data?: InspectionResponseDTO
 			error?: string
+			conflict_data?: any
 		}>
 	> {
 		try {

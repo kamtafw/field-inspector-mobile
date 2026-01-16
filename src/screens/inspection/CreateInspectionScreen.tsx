@@ -11,6 +11,7 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
 
 const MOCK_TEMPLATE = {
 	id: "01065cfdc4f845dea92d231acd25f822",
@@ -32,8 +33,9 @@ TODO: Validate templateId existence
 
 export default function CreateInspectionScreen() {
 	const navigation = useNavigation()
-	const [isLoading, setIsLoading] = useState(false)
 	const { createInspection, submitInspection, isCreating } = useInspections()
+
+	const [isLoading, setIsLoading] = useState(false)
 
 	const [facilityName, setFacilityName] = useState("")
 	const [facilityAddress, setFacilityAddress] = useState("")
@@ -55,16 +57,6 @@ export default function CreateInspectionScreen() {
 			Alert.alert("Error", "Please enter a facility name")
 			return
 		}
-
-		// if (!facilityAddress.trim()) {
-		// 	Alert.alert("Error", "Please enter facility address")
-		// 	return
-		// }
-
-		// if (!Object.keys(responses).length) {
-		// 	Alert.alert("Error", "Inspection must have at least one response")
-		// 	return
-		// }
 
 		setIsLoading(true)
 
@@ -130,7 +122,7 @@ export default function CreateInspectionScreen() {
 	}
 
 	return (
-		<View className="flex-1 bg-background">
+		<SafeAreaView className="flex-1 bg-background">
 			{/* Header */}
 			<View className="flex-row justify-between items-center p-4 pt-14 bg-white border-b border-[#e0e0e0]">
 				<TouchableOpacity onPress={() => navigation.goBack()}>
@@ -232,7 +224,7 @@ export default function CreateInspectionScreen() {
 			</ScrollView>
 
 			{/* Submit Button */}
-			<View className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-[#e0e0e0]">
+			<View className="p-4 bg-white border-t border-[#e0e0e0]">
 				<TouchableOpacity
 					onPress={handleSubmit}
 					className={clsx("bg-[#007AFF] p-4 rounded-lg items-center", isCreating && "opacity-50")}
@@ -245,6 +237,6 @@ export default function CreateInspectionScreen() {
 					)}
 				</TouchableOpacity>
 			</View>
-		</View>
+		</SafeAreaView>
 	)
 }

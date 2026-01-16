@@ -1,9 +1,9 @@
 import { Text, TouchableOpacity, View } from "react-native"
-import database from "@/src/database"
 import Inspection from "@/src/database/models/Inspection"
 import { withObservables } from "@nozbe/watermelondb/react"
 import InspectionsAPI from "@/src/services/api/inspections.api"
 import InspectionRepository from "@/src/database/repositories/InspectionRepository"
+import SyncEngine from "@/src/services/sync/SyncEngine"
 
 interface InspectionProp {
 	inspection: Inspection
@@ -19,7 +19,7 @@ function StatusBadge({ status }: { status: string }) {
 			case "synced":
 				return { backgroundColor: "bg-[#d4edda]", color: "text-[#155724]" }
 			case "conflict":
-				return { backgroundColor: "bg-[#f8d7da]", color: "text-[#721c24]" }
+				return { backgroundColor: "bg-[##ff3b30]", color: "text-[#fff]" }
 			default:
 				return { backgroundColor: "bg-[#e0e0e0]", color: "text-[#666]" }
 		}
@@ -29,7 +29,9 @@ function StatusBadge({ status }: { status: string }) {
 
 	return (
 		<View className={`px-3 py-1 rounded-xl ${badgeStyle.backgroundColor}`}>
-			<Text className={`text-xs font-bold capitalize ${badgeStyle.color}`}>{status}</Text>
+			<Text className={`text-xs font-bold capitalize ${badgeStyle.color}`}>
+				{status === "conflict" ? "⚠️ CONFLICT" : status}
+			</Text>
 		</View>
 	)
 }
@@ -51,9 +53,19 @@ function InspectionCard({ inspection }: InspectionProp) {
 		await InspectionRepository.markSynced(inspection.id, response.id, response.version)
 	}
 
+	const handleUpdateInspection = async () => {
+		await InspectionRepository.update(inspection.id, {
+			facilityName: "Break App",
+			facilityAddress: "Break App Address",
+			status: "submitted",
+		})
+
+		SyncEngine.process()
+	}
+
 	return (
 		<TouchableOpacity
-			onPress={handleSyncInspection}
+			onPress={handleUpdateInspection}
 			className="bg-white rounded-xl p-4 mb-3 shadow-md"
 		>
 			<View className="flex-row mb-2 items-center justify-between">

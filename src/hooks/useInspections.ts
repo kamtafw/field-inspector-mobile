@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import Inspection, { InspectionResponse } from "../database/models/Inspection"
+import Inspection from "../database/models/Inspection"
 import InspectionRepository, {
 	CreateInspectionPayload,
 	UpdateInspectionPayload,
@@ -7,26 +7,22 @@ import InspectionRepository, {
 import database from "../database"
 import { Q } from "@nozbe/watermelondb"
 import { useAuth } from "../providers/AuthProvider"
+import SyncEngine from "../services/sync/SyncEngine"
 
 interface UseInspectionsReturn {
-	// data
 	inspections: Inspection[]
 
-	// loading states
 	isLoading: boolean
 	isCreating: boolean
 	isUpdating: boolean
 
-	// error states
 	error: string | null
 
-	// CRUD operations
 	createInspection: (data: CreateInspectionPayload) => Promise<Inspection>
 	updateInspection: (id: string, data: UpdateInspectionPayload) => Promise<Inspection>
 	deleteInspection: (id: string) => Promise<void>
 	getInspectionById: (id: string) => Promise<Inspection | null>
 
-	// actions
 	submitInspection: (id: string) => Promise<void>
 	refresh: () => Promise<void>
 }
@@ -96,7 +92,7 @@ export default function useInspections(): UseInspectionsReturn {
 			console.log("✅ Inspection created:", inspection.id)
 
 			// TODO: doubt this is necessary cos of withObservables
-			await loadInspections()
+			// await loadInspections()
 
 			return inspection
 		} catch (err: any) {
@@ -126,7 +122,7 @@ export default function useInspections(): UseInspectionsReturn {
 			console.log("✅ Inspection updated:", inspection.id)
 
 			// TODO: doubt this is necessary cos of withObservables
-			await loadInspections()
+			// await loadInspections()
 
 			return inspection
 		} catch (err: any) {
@@ -168,7 +164,15 @@ export default function useInspections(): UseInspectionsReturn {
 
 	/** Submit inspection (change inspection status to submitted) */
 	const submitInspection = async (id: string): Promise<void> => {
-		await updateInspection(id, { status: "submitted" })
+		try {
+			await updateInspection(id, { status: "submitted" })
+			console.log("📤 Inspection submitted, triggering sync...")
+
+			await SyncEngine.process()
+		} catch (err) {
+			console.error("Failed to submit inspection:", err)
+			throw err
+		}
 	}
 
 	/** Refresh (reload) inspections */

@@ -5,19 +5,6 @@ import Inspection, { InspectionResponse } from "../models/Inspection"
 import SyncOperation from "../models/SyncOperation"
 import database from ".."
 
-/*
-TODO: before saving: const responses = JSON.parse(JSON.stringify(input.responses))
-- ensures serializability
-- strips accidental functions or refs
-- guarantees backend-safe shape
-** this is quiet but powerful hardening move
-
-TODO: avoid partial writes; ensure:
-- DB write happens inside a single WatermelonDB action
-- no async branching inside write block
-** this prevents corrupted rows
-*/
-
 export interface CreateInspectionPayload {
 	templateId: string
 	facilityName: string
@@ -105,37 +92,60 @@ class InspectionRepository {
 		}
 
 		const now = Date.now()
-		const isFirstSubmission =
-			data.status === "submitted" && inspection.status === "draft" && !inspection.remoteId
+
+		const shouldSync = data.status === "submitted"
+		const operationType = !inspection.remoteId ? "CREATE_INSPECTION" : "UPDATE_INSPECTION"
+
+		console.log(`📝 Updating inspection ${inspectionId}:`, {
+			currentStatus: inspection.status,
+			newStatus: data.status,
+			hasRemoteId: !!inspection.remoteId,
+			willSync: shouldSync,
+			operationType: shouldSync ? operationType : "none",
+		})
 
 		const updated = await database.write(async () => {
 			const updatedRecord = await inspection.update((record) => {
 				if (data.facilityName) record.facilityName = data.facilityName
 				if (data.facilityAddress) record.facilityAddress = data.facilityAddress
 				if (data.responses) record.responses = JSON.parse(JSON.stringify(data.responses))
+
 				if (data.status) {
 					record.status = data.status
 					if (data.status === "submitted") {
 						record.submittedTs = now
 					}
 				}
+
+				record.isSynced = false
 				record.updatedTs = now
-				// version increment only after successful sync
+				record.lastActionTs = now
 			})
 
-			// queue syncing operation if submitting
-			if (isFirstSubmission) {
-				console.log("🆕 First submission, queueing CREATE_INSPECTION")
-				await this.queueSyncOperation(updatedRecord, "CREATE_INSPECTION")
-			} else if (data.status === "submitted" && inspection.remoteId) {
-				console.log("🔄 Updating existing inspection, queueing UPDATE_INSPECTION")
-				await this.queueSyncOperation(updatedRecord, "UPDATE_INSPECTION")
+			// queue sync operation if status is 'submitted'
+			if (shouldSync) {
+				await this.queueSyncOperation(updatedRecord, operationType)
 			}
 
 			return updatedRecord
 		})
 
 		return updated
+	}
+
+	/** Mark inspection as conflicted */
+	async markConflict(inspectionId: string): Promise<void> {
+		const inspection = await this.getById(inspectionId)
+		if (!inspection) return
+
+		await database.write(async () => {
+			await inspection.update((record) => {
+				record.status = "conflict"
+				record.isSynced = false
+			})
+		})
+
+		console.log(`✅ Marked inspection ${inspectionId} as conflicted`)
 	}
 
 	/** Mark inspection as synced */
@@ -195,6 +205,42 @@ class InspectionRepository {
 		inspection: Inspection,
 		operationType: "CREATE_INSPECTION" | "UPDATE_INSPECTION"
 	): Promise<void> {
+		// check pending/in_progress operation for this inspection
+		const existingOps = await this.syncCollection
+			.query(
+				Q.where("entity_id", inspection.id),
+				Q.where("status", Q.oneOf(["pending", "in_progress", "failed"]))
+			)
+			.fetch()
+
+		if (existingOps.length > 0) {
+			console.log(
+				`⚠️ Sync operation already exists for inspection ${inspection.id}, ` +
+					`updating existing operation instead of creating new one`
+			)
+
+			// update existing operation instead of creating new one (avoid crash)
+			const existingOp = existingOps[0]
+			await existingOp.update((record) => {
+				record.payload = JSON.stringify({
+					remoteId: inspection.remoteId,
+					templateId: inspection.templateId,
+					facilityName: inspection.facilityName,
+					facilityAddress: inspection.facilityAddress,
+					responses: inspection.responses,
+					status: inspection.status,
+					version: inspection.version,
+				})
+				record.retryCount = 0
+				record.status = "pending"
+				record.errorMessage = undefined
+				record.operationType = operationType
+			})
+
+			console.log(`✅ Updated existing sync operation for inspection ${inspection.id}`)
+			return
+		}
+
 		const idempotencyKey = uuid4()
 
 		await this.syncCollection.create((record) => {

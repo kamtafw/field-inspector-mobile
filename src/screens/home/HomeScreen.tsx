@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
 	View,
 	Text,
@@ -15,65 +15,74 @@ import { withObservables } from "@nozbe/watermelondb/react"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import SyncStatusBar from "@/src/components/features/SyncStatusBar"
+import NetworkStatusIndicator from "@/src/components/features/NetworkStatusIndicator"
+import { useAuth } from "@/src/providers/AuthProvider"
 import { MainStackParamList } from "@/src/navigation/types"
 import InspectionCard from "./components/InspectionCard"
 import Inspection from "@/src/database/models/Inspection"
 import SyncEngine from "@/src/services/sync/SyncEngine"
 import InspectionRepository from "@/src/database/repositories/InspectionRepository"
-import { useAuth } from "@/src/providers/AuthProvider"
-import NetworkStatusIndicator from "@/src/components/features/NetworkStatusIndicator"
-
-/*
-TODO: HomeScreen must:
-- render cleanly when zero inspections exist
-- show empty state (even text-only)
-** no spinners forever; no crashes
-
-TODO: sort inspections by:
-- updated_at DESC or created_at DESC
-** prevents list reordering on reload & reduces UI "jumpiness"
-*/
+import ConflictRepository from "@/src/database/repositories/ConflictRepository"
+import { Q } from "@nozbe/watermelondb"
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<MainStackParamList, "Home">
 
 function HomeScreenComponent({ inspections }: { inspections: Inspection[] }) {
 	const { logout } = useAuth()
 	const navigation = useNavigation<HomeScreenNavigationProp>()
-	const [refreshing, setRefreshing] = useState(false)
+
 	const [isLoading, setIsLoading] = useState(false)
-	const [isSyncing, setIsSyncing] = useState(false)
+	const [refreshing, setRefreshing] = useState(false)
+
+	const [conflictCount, setConflictCount] = useState(0)
+
+	useEffect(() => {
+		loadConflictCount()
+
+		// refresh conflict count periodically
+		const interval = setInterval(loadConflictCount, 5000)
+		return () => clearInterval(interval)
+	}, [])
+
+	const loadConflictCount = async () => {
+		try {
+			const stats = await ConflictRepository.getStats()
+			setConflictCount(stats.unresolved)
+		} catch (err) {
+			console.error("Failed to load conflict count:", err)
+		}
+	}
 
 	const onRefresh = async () => {
 		setRefreshing(true)
-		// TODO: trigger sync
-		setTimeout(() => setRefreshing(false), 2000)
+		try {
+			await SyncEngine.process()
+
+			await loadConflictCount()
+		} catch (err) {
+			console.error("Refresh sync failed:", err)
+		} finally {
+			setRefreshing(false)
+		}
 	}
 
 	const handleLogout = async () => {
 		setIsLoading(true)
 		try {
 			await logout()
-		} catch (err: any) {
+		} catch (err) {
 			console.error("Logout failed:", err)
 		} finally {
 			setIsLoading(false)
 		}
 	}
 
-	const handleSync = async () => {
-		setIsSyncing(true)
-		try {
-			await SyncEngine.initialize()
-			// await SyncEngine.process()
-		} catch (err: any) {
-			console.error("Sync failed:", err)
-		} finally {
-			setIsSyncing(false)
-		}
-	}
-
 	const handleCreateNew = async () => {
 		navigation.navigate("CreateInspection")
+	}
+
+	const handleViewConflicts = () => {
+		navigation.navigate("ConflictList")
 	}
 
 	const renderEmpty = () => (
@@ -99,8 +108,21 @@ function HomeScreenComponent({ inspections }: { inspections: Inspection[] }) {
 
 	return (
 		<SafeAreaView className="flex-1 bg-background">
+			{conflictCount > 0 && (
+				<TouchableOpacity
+					onPress={handleViewConflicts}
+					className="bg-[#ff3b30] p-4 flex-row justify-between items-center"
+				>
+					<Text className="flex-1 text-sm text-white font-semibold">
+						⚠️ {conflictCount} conflict{conflictCount !== 1 ? "s" : ""} need resolution
+					</Text>
+					<Text className="text-sm text-white font-semibold">Tap to resolve →</Text>
+				</TouchableOpacity>
+			)}
+
 			<NetworkStatusIndicator />
 
+			{/* Header w/ sync status */}
 			<View className="bg-white p-5 pt-14 border-b border-[#e0e0e0]">
 				<View>
 					<Text className="text-3xl text-[#1a1a1a] font-bold">Inspections</Text>
@@ -121,7 +143,7 @@ function HomeScreenComponent({ inspections }: { inspections: Inspection[] }) {
 				refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
 			/>
 
-			{/* Add Inspection Button */}
+			{/* FAB - Add Inspection Button */}
 			<TouchableOpacity
 				className={clsx(
 					"absolute z-50 right-8 p-4 rounded-full shadow-lg bg-[#007AFF]",
@@ -131,19 +153,6 @@ function HomeScreenComponent({ inspections }: { inspections: Inspection[] }) {
 				onPress={handleCreateNew}
 			>
 				<Feather name="plus" color="#FFF" size={20} />
-			</TouchableOpacity>
-
-			{/* Sync Button */}
-			<TouchableOpacity
-				className={clsx("bg-green-600 m-6 p-4 rounded-lg items-center", isSyncing && "opacity-60")}
-				onPress={handleSync}
-				disabled={isSyncing}
-			>
-				{isSyncing ? (
-					<ActivityIndicator color="#fff" />
-				) : (
-					<Text className="text-white text-base font-semibold">Sync Operations</Text>
-				)}
 			</TouchableOpacity>
 
 			{/* Logout Button */}
@@ -163,7 +172,9 @@ function HomeScreenComponent({ inspections }: { inspections: Inspection[] }) {
 }
 
 const enhance = withObservables([], () => {
-	const inspections$ = InspectionRepository.collection.query().observe()
+	const inspections$ = InspectionRepository.collection
+		.query(Q.sortBy("updated_ts", Q.desc))
+		.observe()
 
 	return { inspections: inspections$ }
 })

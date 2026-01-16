@@ -4,6 +4,7 @@ import schema from "./schema"
 import migrations from "./migrations"
 import Inspection from "./models/Inspection"
 import SyncOperation from "./models/SyncOperation"
+import Conflict from "./models/Conflict"
 
 let database: Database | null = null
 
@@ -28,7 +29,7 @@ export async function initDatabase(): Promise<Database> {
 
 		database = new Database({
 			adapter,
-			modelClasses: [Inspection, SyncOperation],
+			modelClasses: [Inspection, SyncOperation, Conflict],
 		})
 
 		console.log("✅ Database initialized successfully")

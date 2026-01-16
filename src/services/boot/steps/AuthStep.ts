@@ -19,7 +19,7 @@ export const AuthStep: InitializationStep = {
 		}
 
 		if (isAuthenticated && user) {
-			console.log(`Restored auth for userL ${user.id}`)
+			console.log(`Restored auth for user ${user.id}`)
 		} else {
 			console.log("No existing auth session")
 		}

@@ -1,8 +1,10 @@
 import NetInfo from "@react-native-community/netinfo"
+import ConflictDetector from "./ConflictDetector"
 import SyncOperation from "@/src/database/models/SyncOperation"
 import InspectionsAPI, { ConflictResponse } from "../api/inspections.api"
-import SyncRepository from "@/src/database/repositories/SyncRepository"
+import ConflictRepository from "@/src/database/repositories/ConflictRepository"
 import InspectionRepository from "@/src/database/repositories/InspectionRepository"
+import SyncRepository from "@/src/database/repositories/SyncRepository"
 
 export type SyncStatus = "idle" | "syncing" | "error"
 
@@ -17,7 +19,6 @@ class SyncEngine {
 	private isProcessing = false
 	private status: SyncStatus = "idle"
 	private listeners: Array<(status: SyncStatus, stats?: SyncStats) => void> = []
-	private retryTimer: NodeJS.Timeout | null = null
 
 	async initialize() {
 		console.log("🔄 SyncEngine: Initializing...")
@@ -35,37 +36,22 @@ class SyncEngine {
 		const netState = await NetInfo.fetch()
 		if (netState.isConnected) {
 			console.log("✅ Online at startup, processing queue...")
-			// await this.process()
+			await this.process()
 		} else {
 			console.log("📴 Offline at startup, waiting for network...")
 		}
-
-		// schedule automatic retry check every 5s
-		// this.scheduleRetryCheck()
-	}
-
-	/** Periodically check for operations ready to retry */
-	private scheduleRetryCheck() {
-		if (this.retryTimer) {
-			clearInterval(this.retryTimer)
-		}
-
-		this.retryTimer = setInterval(async () => {
-			if (!this.isProcessing) {
-				const pending = await SyncRepository.getPendingOperations()
-
-				if (pending.length > 0) {
-					console.log(`⏰ Retry check: ${pending.length} operations ready`)
-					await this.process()
-				}
-			}
-		}, 5000)
 	}
 
 	/** Process all pending sync operations */
 	async process(): Promise<void> {
 		if (this.isProcessing) {
 			console.log("⏳ Already processing, skipping...")
+			return
+		}
+
+		const netState = await NetInfo.fetch()
+		if (!netState.isConnected) {
+			console.log("📴 Offline, cannot process sync operations")
 			return
 		}
 
@@ -77,7 +63,6 @@ class SyncEngine {
 
 			// get all pending operations
 			const operations = await SyncRepository.getPendingOperations()
-			console.log(`📋 Found ${operations.length} pending operations`)
 
 			if (operations.length === 0) {
 				console.log("✅ No pending operations")
@@ -108,7 +93,6 @@ class SyncEngine {
 
 	/** Process operations individually - for small batches (1-2 operations) */
 	private async processIndividual(operations: SyncOperation[]): Promise<void> {
-		// process each operation
 		let successCount = 0
 		let failCount = 0
 
@@ -136,6 +120,7 @@ class SyncEngine {
 					operation_type: op.operationType,
 					idempotency_key: op.idempotencyKey,
 					data: {
+						id: data.remoteId,
 						template_id: data.templateId,
 						facility_name: data.facilityName,
 						facility_address: data.facilityAddress,
@@ -150,30 +135,36 @@ class SyncEngine {
 
 			let successCount = 0
 			let failCount = 0
+			let conflictCount = 0
 
 			const tasks: Promise<void>[] = []
 
-			results.forEach((result, i) => {
+			for (let i = 0; i < results.length; i++) {
+				const result = results[i]
 				const operation = operations[i]
+
+				// check for conflicts (409)
+				if (!result.success && result.error === "conflict" && result.data) {
+					conflictCount++
+					console.log(`⚠️ Conflict detected in batch for operation ${operation.id}`)
+
+					tasks.push(this.handleConflict(operation, result.conflict_data))
+					continue
+				}
 
 				if (!result.success) {
 					failCount++
 					tasks.push(SyncRepository.markFailed(operation.id, result.error ?? "Unknown error"))
-
-					return
+					continue
 				}
 
 				if (!result.data?.id) {
 					failCount++
-					tasks.push(
-						SyncRepository.markFailed(operation.id, result.error ?? "Missing server entity ID")
-					)
-
-					return
+					tasks.push(SyncRepository.markFailed(operation.id, "Missing server entity ID"))
+					continue
 				}
 
 				successCount++
-
 				tasks.push(
 					SyncRepository.markCompleted(operation.id),
 					InspectionRepository.markSynced(
@@ -182,11 +173,13 @@ class SyncEngine {
 						result.data.version ?? 1
 					)
 				)
-			})
+			}
 
 			await Promise.all(tasks)
 
-			console.log(`✅ Batch sync completed: ${successCount} succeeded, ${failCount} failed`)
+			console.log(
+				`✅ Batch sync completed: ${successCount} succeeded, ${failCount} failed, ${conflictCount} conflicts.`
+			)
 		} catch (err: any) {
 			console.error("❌ Batch sync failed:", err)
 
@@ -224,19 +217,19 @@ class SyncEngine {
 
 			// check if it's a conflict (409) - don't retry, handle specially
 			if (err.response?.status === 409) {
+				console.log("⚠️ 409 Conflict detected, handling...")
 				await this.handleConflict(operation, err.response.data)
 				return
 			}
 
+			// check retry limit
 			if (operation.retryCount >= operation.maxRetries) {
 				await SyncRepository.markFailed(operation.id, "Max retries exceeded")
-				// TODO: notify user ot move to dead letter queue
 				return
 			}
 
 			// mark other errors as failed and schedule a retry
 			await SyncRepository.markFailed(operation.id, err.message)
-
 			throw err
 		}
 	}
@@ -255,10 +248,7 @@ class SyncEngine {
 			operation.idempotencyKey
 		)
 
-		// update local inspection with server data
 		await InspectionRepository.markSynced(operation.entityId, response.id, response.version)
-
-		// mark operation complete
 		await SyncRepository.markCompleted(operation.id)
 		console.log("✅ CREATE synced, remote_id:", response.id)
 	}
@@ -272,7 +262,7 @@ class SyncEngine {
 		if (!remoteId) {
 			throw new Error(
 				`Cannot update inspection ${operation.entityId}: no remote_id. ` +
-					`This should be a CREATE, not UPDATE.`
+					`Inspection must be created first. Payload: ${JSON.stringify(payload)}`
 			)
 		}
 
@@ -288,26 +278,60 @@ class SyncEngine {
 			operation.idempotencyKey
 		)
 
-		// check for conflict
 		if ("error" in response && response.error === "conflict") {
 			throw { response: { status: 409, data: response } }
 		}
 
-		// update local inspection
 		await InspectionRepository.markSynced(operation.entityId, response.id, response.version)
-
-		// mark operation complete
 		await SyncRepository.markCompleted(operation.id)
 	}
 
+	/** Handle 409 conflict response */
 	private async handleConflict(
 		operation: SyncOperation,
 		conflictData: ConflictResponse
 	): Promise<void> {
-		console.log("⚠️ Conflict detected:", conflictData)
+		console.log("⚠️ Conflict detected on inspection:", operation.entityId)
 
-		// mark inspection as conflicted
-		return
+		const clientData = JSON.parse(operation.payload)
+		const serverData = {
+			remoteId: conflictData.server_data.id,
+			templateId: conflictData.server_data.template_id,
+			facilityName: conflictData.server_data.facility_name,
+			facilityAddress: conflictData.server_data.facility_address,
+			responses: conflictData.server_data.response,
+			status: conflictData.server_data.status,
+			version: conflictData.server_data.version,
+		}
+
+		// detect conflict fields
+		const conflictFields = ConflictDetector.detectConflicts(clientData, serverData)
+
+		console.log("📋 Conflict fields:", conflictFields)
+
+		try {
+			await ConflictRepository.create({
+				inspectionId: operation.entityId,
+				clientVersion: conflictData.client_version,
+				serverVersion: conflictData.server_version,
+				clientData: clientData,
+				serverData: serverData,
+				conflictFields,
+			})
+
+			console.log("💾 Conflict record created")
+
+			// mark inspection as conflicted
+			await InspectionRepository.markConflict(operation.entityId)
+
+			// mark operation as completed (conflict resolution is a separate workflow)
+			await SyncRepository.markCompleted(operation.id)
+
+			console.log("✅ Conflict handling complete")
+		} catch (err) {
+			console.error("❌ Failed to create conflict record:", err)
+			throw err
+		}
 	}
 
 	/** Get sync operations queue statistics */

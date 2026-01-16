@@ -3,7 +3,7 @@
 import { appSchema, tableSchema } from "@nozbe/watermelondb"
 
 export default appSchema({
-	version: 10,
+	version: 19,
 	tables: [
 		tableSchema({
 			name: "users",
@@ -71,6 +71,25 @@ export default appSchema({
 
 				{ name: "created_ts", type: "number" },
 				{ name: "completed_ts", type: "number", isOptional: true },
+			],
+		}),
+
+		tableSchema({
+			name: "conflicts",
+			columns: [
+				{ name: "inspection_id", type: "string", isIndexed: true },
+				{ name: "client_version", type: "number" },
+				{ name: "server_version", type: "number" },
+
+				{ name: "client_data", type: "string" },
+				{ name: "server_data", type: "string" },
+				{ name: "conflict_fields", type: "string" },
+
+				{ name: "resolved", type: "boolean" },
+				{ name: "resolution_strategy", type: "string", isOptional: true }, // keep_mine | keep_theirs | merge
+				{ name: "resolved_ts", type: "number", isOptional: true },
+
+				{ name: "created_ts", type: "number" },
 			],
 		}),
 	],

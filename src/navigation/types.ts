@@ -13,4 +13,6 @@ export type MainStackParamList = {
 	Home: undefined
 	CreateInspection: undefined
 	InspectionDetail: { id: string }
+	ConflictList: undefined
+	ConflictResolution: undefined
 }
