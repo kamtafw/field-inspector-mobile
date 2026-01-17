@@ -1,53 +1,159 @@
 import React, { useState, useEffect } from "react"
 import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
-import { v4 as uuid4 } from "uuid"
 import { clsx } from "clsx"
-import { useNavigation, useRoute } from "@react-navigation/native"
-import database from "@/src/database"
+import { RouteProp, useNavigation, useRoute } from "@react-navigation/native"
 import InspectionRepository from "@/src/database/repositories/InspectionRepository"
 import ConflictRepository from "@/src/database/repositories/ConflictRepository"
-import SyncRepository from "@/src/database/repositories/SyncRepository"
 import ConflictResolver from "@/src/services/sync/ConflictDetector"
 import SyncEngine from "@/src/services/sync/SyncEngine"
+import { MainStackParamList } from "@/src/navigation/types"
+import { NativeStackNavigationProp } from "@react-navigation/native-stack"
+import Conflict from "@/src/database/models/Conflict"
 
-export type StrategyType = "keep_mine" | "keep_theirs" | "merge"
+type ConflictResolutionProp = RouteProp<MainStackParamList, "ConflictResolution">
+type NavigationProp = NativeStackNavigationProp<MainStackParamList>
+
+type ResolutionStrategy = "keep_mine" | "keep_theirs" | "merge"
+type MergedData = {
+	facilityName: string
+	facilityAddress: string
+	responses: any
+	status: any
+	version: any
+}
+
+type FieldSelection = {
+	[fieldName: string]: "client" | "server"
+}
 
 export default function ConflictResolutionScreen() {
-	const navigation = useNavigation()
-	const route = useRoute()
-	const { conflict, inspection } = route.params as any
+	const route = useRoute<ConflictResolutionProp>()
+	const navigation = useNavigation<NavigationProp>()
+	const { inspectionId } = route.params
 
-	const [selectedStrategy, setSelectedStrategy] = useState<StrategyType | null>(null)
-	const [mergedData, setMergedData] = useState<any>(null)
+	const [conflict, setConflict] = useState<Conflict | null>(null)
+	const [isLoading, setIsLoading] = useState(true)
 	const [isResolving, setIsResolving] = useState(false)
 
+	const [strategy, setStrategy] = useState<ResolutionStrategy | null>(null)
+	const [mergedData, setMergedData] = useState<MergedData | null>(null)
+
+	const [fieldSelections, setFieldSelections] = useState<FieldSelection>({})
+
 	useEffect(() => {
-		// analyze conflict and suggest strategy
-		const analysis = ConflictResolver.analyzeConflict(
-			conflict.clientData,
-			conflict.serverData,
-			conflict.conflictFields
-		)
+		loadConflict()
+	}, [inspectionId])
 
-		setSelectedStrategy(analysis.suggestedStrategy)
+	const loadConflict = async () => {
+		try {
+			setIsLoading(true)
+			const conflicts = await ConflictRepository.getByInspectionId(inspectionId)
 
-		// pre-populate merged data
-		if (analysis.autoMergeable) {
-			const autoMerged = ConflictResolver.autoMerge(
-				conflict.clientData,
-				conflict.serverData,
-				conflict.conflictFields
+			if (conflicts.length === 0) {
+				Alert.alert("No Conflict", "This inspection has no pending conflicts.")
+				navigation.goBack()
+				return
+			}
+
+			const recentConflict = conflicts[0]
+			setConflict(recentConflict)
+
+			const analysis = ConflictResolver.analyzeConflict(
+				recentConflict.clientData,
+				recentConflict.serverData,
+				recentConflict.conflictFields
 			)
-			setMergedData(autoMerged)
-		} else {
-			// default to server data for manual merge
-			setMergedData({ ...conflict.serverData })
+
+			setStrategy(analysis.suggestedStrategy)
+
+			setMergedData({
+				facilityName: recentConflict.serverData.facilityName,
+				facilityAddress: recentConflict.serverData.facilityAddress,
+				responses: { ...recentConflict.serverData.responses },
+				status: recentConflict.serverData.status,
+				version: recentConflict.serverData.version,
+			})
+
+			const initialSelections: FieldSelection = {}
+
+			if (recentConflict.conflictFields.includes("facility_name")) {
+				initialSelections["facility_name"] = "server"
+			}
+			if (recentConflict.conflictFields.includes("facility_address")) {
+				initialSelections["facility_address"] = "server"
+			}
+			if (recentConflict.conflictFields.includes("status")) {
+				initialSelections["status"] = "server"
+			}
+
+			recentConflict.conflictFields
+				.filter((f: string) => f.startsWith("responses."))
+				.forEach((fieldKey: string) => {
+					const itemId = fieldKey.replace("responses.", "")
+					initialSelections[`responses.${itemId}`] = "server"
+				})
+
+			setFieldSelections(initialSelections)
+		} catch (err) {
+			console.error("Failed to load conflict:", err)
+			Alert.alert("Error", "Failed to load conflict details")
+		} finally {
+			setIsLoading(false)
 		}
-	}, [])
+	}
+
+	const toggleFieldSelection = (fieldName: string, currentSelection: "client" | "server") => {
+		if (!conflict || !mergedData) return
+
+		const newSelection = currentSelection === "client" ? "server" : "client"
+
+		setFieldSelections((prev) => ({
+			...prev,
+			[fieldName]: newSelection,
+		}))
+
+		if (fieldName === "facilityName") {
+			setMergedData({
+				...mergedData,
+				facilityName:
+					newSelection === "client"
+						? conflict.clientData.facilityName
+						: conflict.serverData.facilityName,
+			})
+		} else if (fieldName === "facilityAddress") {
+			setMergedData({
+				...mergedData,
+				facilityAddress:
+					newSelection === "client"
+						? conflict.clientData.facilityAddress
+						: conflict.serverData.facilityAddress,
+			})
+		} else if (fieldName === "status") {
+			setMergedData({
+				...mergedData,
+				status: newSelection === "client" ? conflict.clientData.status : conflict.serverData.status,
+			})
+		} else if (fieldName.startsWith("responses.")) {
+			const itemId = fieldName.replace("responses.", "")
+			const newResponses = { ...mergedData.responses }
+
+			newResponses[itemId] =
+				newSelection === "client"
+					? conflict.clientData.responses[itemId]
+					: conflict.serverData.responses[itemId]
+
+			setMergedData({
+				...mergedData,
+				responses: newResponses,
+			})
+		}
+	}
 
 	const handleResolve = async () => {
-		if (!selectedStrategy) {
+		if (!conflict || !mergedData) return
+
+		if (!strategy) {
 			Alert.alert("Error", "Please select a resolution strategy")
 			return
 		}
@@ -58,7 +164,7 @@ export default function ConflictResolutionScreen() {
 			let finalData: any
 
 			// determine final data based on strategy
-			switch (selectedStrategy) {
+			switch (strategy) {
 				case "keep_mine":
 					finalData = conflict.clientData
 					break
@@ -71,42 +177,47 @@ export default function ConflictResolutionScreen() {
 			}
 
 			// update local inspection with resolved data
-			await InspectionRepository.update(inspection.id, {
+			await InspectionRepository.update(inspectionId, {
 				facilityName: finalData.facilityName,
 				facilityAddress: finalData.facilityAddress,
 				responses: finalData.responses,
-				status: finalData.status,
+				status: "submitted",
 				version: conflict.serverVersion,
 			})
 
 			// mark conflict as resolved
-			await ConflictRepository.markResolved(conflict.id, selectedStrategy)
+			await ConflictRepository.markResolved(conflict.id, strategy)
 
-			Alert.alert("Success", "Conflict resolved!", [
+			await SyncEngine.process()
+
+			Alert.alert("Conflict Resolved", "Your changes have been saved and will sync when online.", [
 				{
 					text: "OK",
-					onPress: async () => {
-						navigation.goBack()
-						await SyncEngine.process()
-					},
+					onPress: async () => navigation.goBack(),
 				},
 			])
-		} catch (error: any) {
-			Alert.alert("Error", error.message)
+		} catch (err: any) {
+			console.error("Failed to resolve conflict:", err)
+			Alert.alert("Error", err.message || "Failed to resolve conflict")
 		} finally {
 			setIsResolving(false)
 		}
 	}
 
 	const renderFieldComparison = (
+		fieldName: string,
 		label: string,
 		clientValue: any,
 		serverValue: any,
 		isConflict: boolean
 	) => {
+		const currentSelection = fieldSelections[fieldName] || "server"
+		const isMergeMode = strategy === "merge"
+
 		const stateStyles = {
 			strategy: "bg-[#d4edda] border-2 border-[#28a745]",
-			conflict: "bg-[#f9f9f9] border-2 border-[#ff9500]",
+			merge: "bg-[#e3f2fd] border-2 border-[#007aff]",
+			conflict: "bg-[#fff3e0] border-2 border-[#ff9500]",
 			default: "bg-[#f9f9f9] border border-[#e0e0e0]",
 		}
 
@@ -116,45 +227,91 @@ export default function ConflictResolutionScreen() {
 
 				<View className="flex-row gap-3">
 					{/* Client value */}
-					<View
+					<TouchableOpacity
 						className={clsx(
 							"flex-1 rounded-lg p-3",
-							selectedStrategy === "keep_mine"
+							strategy === "keep_mine"
 								? stateStyles.strategy
+								: isMergeMode && currentSelection === "client"
+								? stateStyles.merge
 								: isConflict
 								? stateStyles.conflict
 								: stateStyles.default
 						)}
+						onPress={() => {
+							if (isMergeMode && isConflict) {
+								toggleFieldSelection(fieldName, currentSelection)
+							}
+						}}
+						disabled={!isMergeMode || !isConflict}
 					>
-						<Text className="text-xs text-[#999] uppercase font-semibold mb-2">Your Version</Text>
+						<View className="flex-row justify-between items-center mb-2">
+							<Text className="text-xs text-[#999] uppercase font-semibold">Your Version</Text>
+							{isMergeMode && isConflict && currentSelection === "client" && (
+								<Text className="text-sm text-[#007aff]">✓</Text>
+							)}
+						</View>
 						<Text className="text-sm text-[#1a1a1a]">{String(clientValue || "N/A")}</Text>
-					</View>
+					</TouchableOpacity>
+
 					{/* Server value */}
-					<View
+					<TouchableOpacity
 						className={clsx(
 							"flex-1 rounded-lg p-3",
-							selectedStrategy === "keep_theirs"
+							strategy === "keep_theirs"
 								? stateStyles.strategy
+								: isMergeMode && currentSelection === "server"
+								? stateStyles.merge
 								: isConflict
 								? stateStyles.conflict
 								: stateStyles.default
 						)}
+						onPress={() => {
+							if (isMergeMode && isConflict) {
+								toggleFieldSelection(fieldName, currentSelection)
+							}
+						}}
+						disabled={!isMergeMode || !isConflict}
 					>
-						<Text className="text-xs text-[#999] uppercase font-semibold mb-2">Server Version</Text>
+						<View className="flex-row justify-between items-center mb-2">
+							<Text className="text-xs text-[#999] uppercase font-semibold">Server Version</Text>
+							{isMergeMode && isConflict && currentSelection === "server" && (
+								<Text className="text-sm text-[#007aff]">✓</Text>
+							)}
+						</View>
 						<Text className="text-sm text-[#1a1a1a]">{String(serverValue || "N/A")}</Text>
-					</View>
+					</TouchableOpacity>
 				</View>
 
 				{isConflict && (
 					<View className="mt-2 p-2 bg-[#fff3cd] rounded-md">
-						<Text className="text-xs text-[#856404] font-medium">⚠️ Conflict detected</Text>
+						<Text className="text-xs text-[#856404] font-medium">
+							{isMergeMode ? "⚠️ Tap to select which version to keep" : "⚠️ Conflict detected"}
+						</Text>
 					</View>
 				)}
 			</View>
 		)
 	}
 
-	const detailedConflicts = conflict.detailedConflicts
+	if (isLoading) {
+		return (
+			<View className="flex-1 justify-center items-center p-5">
+				<ActivityIndicator size="large" color="#007AFF" />
+				<Text className="mt-3 text-base text-[#666]">Loading conflict...</Text>
+			</View>
+		)
+	}
+
+	if (!conflict || !mergedData) {
+		return (
+			<View className="flex-1 justify-center items-center p-5">
+				<Text className="text-base text-[#ff3b30]">No conflict data available</Text>
+			</View>
+		)
+	}
+
+	const detailedConflicts = conflict.detailedConflicts || []
 
 	return (
 		<SafeAreaView className="flex-1 bg-background">
@@ -167,7 +324,7 @@ export default function ConflictResolutionScreen() {
 				<View className="w-14" />
 			</View>
 
-			<ScrollView className="flex-1" contentContainerClassName="p-4 pb-24">
+			<ScrollView className="flex-1 scrollView" contentContainerClassName="p-4 pb-24">
 				{/* Conflict info */}
 				<View className="bg-[#fff3cc] rounded-xl p-4 mb-4 border border-[#ffc107] ">
 					<Text className="text-base text-[#856404] font-semibold mb-2">What happened?</Text>
@@ -198,16 +355,16 @@ export default function ConflictResolutionScreen() {
 					<TouchableOpacity
 						className={clsx(
 							"border-2 rounded-xl p-4 mb-3",
-							selectedStrategy === "keep_mine"
+							strategy === "keep_mine"
 								? "bg-[#e3f2fd] border-[#007aff]"
 								: "bg-[#f9f9f9] border-[#e0e0e0]"
 						)}
-						onPress={() => setSelectedStrategy("keep_mine")}
+						onPress={() => setStrategy("keep_mine")}
 					>
 						<Text
 							className={clsx(
 								"text-base font-semibold mb-1",
-								selectedStrategy === "keep_mine" ? "text-[#007aff]" : "text-[#1a1a1a]"
+								strategy === "keep_mine" ? "text-[#007aff]" : "text-[#1a1a1a]"
 							)}
 						>
 							Keep My Changes
@@ -218,16 +375,16 @@ export default function ConflictResolutionScreen() {
 					<TouchableOpacity
 						className={clsx(
 							"border-2 rounded-xl p-4 mb-3",
-							selectedStrategy === "keep_theirs"
+							strategy === "keep_theirs"
 								? "bg-[#e3f2fd] border-[#007aff]"
 								: "bg-[#f9f9f9] border-[#e0e0e0]"
 						)}
-						onPress={() => setSelectedStrategy("keep_theirs")}
+						onPress={() => setStrategy("keep_theirs")}
 					>
 						<Text
 							className={clsx(
 								"text-base font-semibold mb-1",
-								selectedStrategy === "keep_theirs" ? "text-[#007aff]" : "text-[#1a1a1a]"
+								strategy === "keep_theirs" ? "text-[#007aff]" : "text-[#1a1a1a]"
 							)}
 						>
 							Keep Server Changes
@@ -238,16 +395,16 @@ export default function ConflictResolutionScreen() {
 					<TouchableOpacity
 						className={clsx(
 							"border-2 rounded-xl p-4 mb-3",
-							selectedStrategy === "merge"
+							strategy === "merge"
 								? "bg-[#e3f2fd] border-[#007aff]"
 								: "bg-[#f9f9f9] border-[#e0e0e0]"
 						)}
-						onPress={() => setSelectedStrategy("merge")}
+						onPress={() => setStrategy("merge")}
 					>
 						<Text
 							className={clsx(
 								"text-base font-semibold mb-1",
-								selectedStrategy === "merge" ? "text-[#007aff]" : "text-[#1a1a1a]"
+								strategy === "merge" ? "text-[#007aff]" : "text-[#1a1a1a]"
 							)}
 						>
 							Merge Both (Review Required)
@@ -262,22 +419,29 @@ export default function ConflictResolutionScreen() {
 
 					{/* Facility Name */}
 					{renderFieldComparison(
+						"facilityName",
 						"Facility Name",
 						conflict.clientData.facilityName,
 						conflict.serverData.facilityName,
 						conflict.conflictFields.includes("facility_name")
 					)}
 
+					<View className="border-b border-[#e0e0e0] mb-3" />
+
 					{/* Facility Address */}
 					{renderFieldComparison(
+						"facilityAddress",
 						"Facility Address",
 						conflict.clientData.facilityAddress,
 						conflict.serverData.facilityAddress,
 						conflict.conflictFields.includes("facility_address")
 					)}
 
+					<View className="border-b border-[#e0e0e0] mb-3" />
+
 					{/* Status */}
 					{renderFieldComparison(
+						"status",
 						"Status",
 						conflict.clientData.status,
 						conflict.serverData.status,
@@ -291,7 +455,9 @@ export default function ConflictResolutionScreen() {
 							const itemId = conflictItem.field.replace("responses.", "")
 							return (
 								<View key={itemId}>
+									<View className="border-b border-[#e0e0e0] mb-3" />
 									{renderFieldComparison(
+										`responses.${itemId}`,
 										`Checklist Item: ${itemId}`,
 										conflictItem.clientValue?.value,
 										conflictItem.serverValue?.value,

@@ -7,7 +7,6 @@ import InspectionRepository, {
 import database from "../database"
 import { Q } from "@nozbe/watermelondb"
 import { useAuth } from "../providers/AuthProvider"
-import SyncEngine from "../services/sync/SyncEngine"
 
 interface UseInspectionsReturn {
 	inspections: Inspection[]
@@ -167,8 +166,6 @@ export default function useInspections(): UseInspectionsReturn {
 		try {
 			await updateInspection(id, { status: "submitted" })
 			console.log("📤 Inspection submitted, triggering sync...")
-
-			await SyncEngine.process()
 		} catch (err) {
 			console.error("Failed to submit inspection:", err)
 			throw err

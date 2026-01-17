@@ -1,4 +1,5 @@
 import useInspections from "@/src/hooks/useInspections"
+import SyncEngine from "@/src/services/sync/SyncEngine"
 import { useNavigation } from "@react-navigation/native"
 import clsx from "clsx"
 import { useState } from "react"
@@ -114,8 +115,15 @@ export default function CreateInspectionScreen() {
 			const inspection = await createInspection(data)
 			await submitInspection(inspection.id)
 
-			Alert.alert("Success", "Inspection created!")
-			navigation.goBack()
+			Alert.alert("Success", "Inspection created!", [
+				{
+					text: "OK",
+					onPress: async () => {
+						navigation.goBack()
+						await SyncEngine.process()
+					},
+				},
+			])
 		} catch (err: any) {
 			Alert.alert("Error", err.message)
 		}
