@@ -1,6 +1,5 @@
 export interface ConflictAnalysis {
 	hasConflict: boolean
-	conflictFields: string[]
 	severity: "low" | "medium" | "high"
 	autoMergeable: boolean
 	suggestedStrategy: "keep_mine" | "keep_theirs" | "merge"
@@ -52,12 +51,12 @@ class ConflictDetector {
 
 		// can auto-merge if only text fields (not critical fields like status)
 		const criticalFields = ["status", "facility_name"]
-		const hasCriticalConflict = conflictFields.some((f) => criticalFields.includes(f))
-		const autoMergeable = !hasCriticalConflict && conflictFields.length <= 2
+		const isCriticalConflict = conflictFields.some((f) => criticalFields.includes(f))
+		const autoMergeable = !isCriticalConflict && conflictFields.length <= 2
 
 		let suggestedStrategy: "keep_mine" | "keep_theirs" | "merge" = "merge"
 
-		if (hasCriticalConflict) {
+		if (isCriticalConflict) {
 			suggestedStrategy = "merge"
 		} else if (this.isServerNewer(clientData, serverData)) {
 			suggestedStrategy = "keep_theirs"
@@ -67,7 +66,6 @@ class ConflictDetector {
 
 		return {
 			hasConflict: conflictFields.length > 0,
-			conflictFields,
 			severity,
 			autoMergeable,
 			suggestedStrategy,

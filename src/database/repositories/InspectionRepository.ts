@@ -17,6 +17,7 @@ export interface UpdateInspectionPayload {
 	facilityAddress?: string
 	responses?: InspectionResponse
 	status?: "draft" | "submitted"
+	version?: number
 }
 
 class InspectionRepository {
@@ -120,9 +121,10 @@ class InspectionRepository {
 				record.isSynced = false
 				record.updatedTs = now
 				record.lastActionTs = now
+
+				if (data.version) record.version = data.version // conflict resolution
 			})
 
-			// queue sync operation if status is 'submitted'
 			if (shouldSync) {
 				await this.queueSyncOperation(updatedRecord, operationType)
 			}

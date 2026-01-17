@@ -291,15 +291,13 @@ class SyncEngine {
 		operation: SyncOperation,
 		conflictData: ConflictResponse
 	): Promise<void> {
-		console.log("⚠️ Conflict detected on inspection:", operation.entityId)
-
 		const clientData = JSON.parse(operation.payload)
 		const serverData = {
 			remoteId: conflictData.server_data.id,
 			templateId: conflictData.server_data.template_id,
 			facilityName: conflictData.server_data.facility_name,
 			facilityAddress: conflictData.server_data.facility_address,
-			responses: conflictData.server_data.response,
+			responses: conflictData.server_data.responses,
 			status: conflictData.server_data.status,
 			version: conflictData.server_data.version,
 		}
@@ -308,6 +306,8 @@ class SyncEngine {
 		const conflictFields = ConflictDetector.detectConflicts(clientData, serverData)
 
 		console.log("📋 Conflict fields:", conflictFields)
+
+		// TODO: handle conflicts on same inspection - i.e. when there's a new conflict on same inspection
 
 		try {
 			await ConflictRepository.create({
@@ -318,8 +318,6 @@ class SyncEngine {
 				serverData: serverData,
 				conflictFields,
 			})
-
-			console.log("💾 Conflict record created")
 
 			// mark inspection as conflicted
 			await InspectionRepository.markConflict(operation.entityId)

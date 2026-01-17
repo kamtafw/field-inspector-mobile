@@ -3,7 +3,7 @@
 import { appSchema, tableSchema } from "@nozbe/watermelondb"
 
 export default appSchema({
-	version: 19,
+	version: 3,
 	tables: [
 		tableSchema({
 			name: "users",

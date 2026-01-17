@@ -67,7 +67,7 @@ export default function ConflictListScreen() {
 						<Text className="text-xs text-white font-bold">⚠️ CONFLICT</Text>
 					</View>
 					<Text className="text-xs text-[#999]">
-						{new Date(item.createdTs).toLocaleDateString()}
+						{new Date(item.createdTs).toLocaleString()}
 					</Text>
 				</View>
 

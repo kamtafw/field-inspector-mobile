@@ -4,11 +4,12 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import { v4 as uuid4 } from "uuid"
 import { clsx } from "clsx"
 import { useNavigation, useRoute } from "@react-navigation/native"
-import ConflictRepository from "@/src/database/repositories/ConflictRepository"
+import database from "@/src/database"
 import InspectionRepository from "@/src/database/repositories/InspectionRepository"
+import ConflictRepository from "@/src/database/repositories/ConflictRepository"
 import SyncRepository from "@/src/database/repositories/SyncRepository"
 import ConflictResolver from "@/src/services/sync/ConflictDetector"
-import database from "@/src/database"
+import SyncEngine from "@/src/services/sync/SyncEngine"
 
 export type StrategyType = "keep_mine" | "keep_theirs" | "merge"
 
@@ -75,34 +76,19 @@ export default function ConflictResolutionScreen() {
 				facilityAddress: finalData.facilityAddress,
 				responses: finalData.responses,
 				status: finalData.status,
+				version: conflict.serverVersion,
 			})
 
 			// mark conflict as resolved
 			await ConflictRepository.markResolved(conflict.id, selectedStrategy)
 
-			// queue update operation to sync resolution to server
-			const syncCollection = SyncRepository.collection
-			await database.write(async () => {
-				await syncCollection.create((record: any) => {
-					record.operationType = "UPDATE_INSPECTION"
-					record.entityId = inspection.id
-					record.entityType = "inspection"
-					record.idempotencyKey = uuid4()
-					record.payload = JSON.stringify({
-						remoteId: inspection.remoteId,
-						...finalData,
-						version: conflict.serverVersion,
-					})
-					record.status = "pending"
-					record.retryCount = 0
-					record.maxRetries = 5
-				})
-			})
-
 			Alert.alert("Success", "Conflict resolved!", [
 				{
 					text: "OK",
-					onPress: () => navigation.goBack(),
+					onPress: async () => {
+						navigation.goBack()
+						await SyncEngine.process()
+					},
 				},
 			])
 		} catch (error: any) {

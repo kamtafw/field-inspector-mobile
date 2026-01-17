@@ -23,7 +23,7 @@ export interface InspectionResponseDTO {
 	template_id: string
 	facility_name: string
 	facility_address: string
-	response: InspectionResponse
+	responses: InspectionResponse
 	status: "draft" | "submitted" | "approved" | "rejected"
 	version: number
 	inspector: {
