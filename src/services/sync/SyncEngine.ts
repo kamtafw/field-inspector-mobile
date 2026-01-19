@@ -302,6 +302,8 @@ class SyncEngine {
 			version: conflictData.server_data.version,
 		}
 
+		console.log("Conflict Data:", conflictData)
+
 		// detect conflict fields
 		const conflictFields = ConflictDetector.detectConflicts(clientData, serverData)
 
@@ -317,7 +319,28 @@ class SyncEngine {
 				clientData: clientData,
 				serverData: serverData,
 				conflictFields,
+				serverUpdatedBy: {
+					name: conflictData.server_data.updated_by.name,
+					email: conflictData.server_data.updated_by.email,
+				},
+				serverUpdatedTs: Date.parse(conflictData.server_data.updated_at),
 			})
+
+			// Conflict Data: {
+			// "client_version": 1,
+			// "error": "conflict",
+			// "message": "Version conflict: client v1 vs server v2",
+			// "server_data":
+			// 							{"facility_address": "Location 911",
+			// 								"facility_name": "Conflict 911",
+			// 								"id": "95e122a5-ec57-4136-9b1f-528d738e4e7f",
+			// 								"responses": {},
+			// 								"status": "submitted",
+			// 								"template_id": "01065cfd-c4f8-45de-a92d-231acd25f822",
+			// 								"updated_at": "2026-01-19T07:05:44.665963+00:00",
+			// 								"updated_by": {"email": "admin@example.com", "id": "1", "name": "2026-01-02 12:58:58.510475+00:00 2026-01-02 12:58:58.558300+00:00"},
+			// 								"version": 2},
+			// "server_version": 2}
 
 			// mark inspection as conflicted
 			await InspectionRepository.markConflict(operation.entityId)

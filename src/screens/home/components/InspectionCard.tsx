@@ -63,8 +63,8 @@ function InspectionCard({ inspection }: InspectionProp) {
 
 	const handleUpdateInspection = async () => {
 		await InspectionRepository.update(inspection.id, {
-			facilityName: "Working App",
-			facilityAddress: "Working Address",
+			facilityName: "New Conflict",
+			facilityAddress: "Conflict Address",
 			status: "submitted",
 		})
 

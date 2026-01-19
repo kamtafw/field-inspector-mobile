@@ -43,6 +43,10 @@ export interface InspectionResponseDTO {
 	created_at: string // ISO date string
 	submitted_at?: string // ISO date string
 	updated_at: string // ISO date string
+	updated_by: {
+		name: string
+		email: string
+	}
 }
 
 export interface ConflictResponse {

@@ -9,6 +9,11 @@ export interface CreateConflictPayload {
 	clientData: any
 	serverData: any
 	conflictFields: string[]
+	serverUpdatedBy: {
+		name: string
+		email: string
+	}
+	serverUpdatedTs: number
 }
 
 class ConflictRepository {
@@ -26,6 +31,15 @@ class ConflictRepository {
 				record.clientData = data.clientData
 				record.serverData = data.serverData
 				record.conflictFields = data.conflictFields
+
+				if (data.serverUpdatedBy) {
+					record.serverUpdatedByName = data.serverUpdatedBy.name
+					record.serverUpdatedByEmail = data.serverUpdatedBy.email
+				}
+				if (data.serverUpdatedTs) {
+					record.serverUpdatedTs = data.serverUpdatedTs
+				}
+
 				record.resolved = false
 				record.createdTs = now
 			})
@@ -55,6 +69,24 @@ class ConflictRepository {
 		return records
 	}
 
+	/** Get conflict by ID */
+	async getById(id: string): Promise<Conflict | null> {
+		try {
+			return await this.collection.find(id)
+		} catch {
+			return null
+		}
+	}
+
+	/** Check if inspection has unresolved conflicts */
+	async hasUnresolvedConflicts(inspectionId: string): Promise<boolean> {
+		const count = await this.collection
+			.query(Q.where("inspection_id", inspectionId), Q.where("resolved", false))
+			.fetchCount()
+
+		return count > 0
+	}
+
 	/** Mark conflict as resolved */
 	async markResolved(
 		conflictId: string,
@@ -73,11 +105,27 @@ class ConflictRepository {
 
 	/** Delete conflict */
 	async delete(conflictId: string): Promise<void> {
-		const conflict = this.collection.find(conflictId)
+		const conflict = await this.collection.find(conflictId)
 
 		await database.write(async () => {
-			;(await conflict).markAsDeleted()
+			await conflict.markAsDeleted()
 		})
+	}
+
+	/** Delete all resolved conflicts older than 30 days */
+	async cleanupOldConflicts(): Promise<number> {
+		const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000
+
+		const oldConflicts = await this.collection
+			.query(Q.where("resolved", true), Q.where("resolved_at", Q.lt(thirtyDaysAgo)))
+			.fetch()
+
+		await database.write(async () => {
+			await Promise.all(oldConflicts.map((c) => c.markAsDeleted()))
+		})
+
+		console.log(`🗑️ Cleaned up ${oldConflicts.length} old conflict records`)
+		return oldConflicts.length
 	}
 
 	/** Get conflict statistics */

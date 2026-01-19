@@ -26,6 +26,10 @@ export default class Conflict extends Model {
 	@text("resolution_strategy") resolutionStrategy?: "keep_mine" | "keep_theirs" | "merge"
 	@field("resolved_ts") resolvedTs?: number
 
+	@text("server_updated_by_name") serverUpdatedByName?: string
+	@text("server_updated_by_email") serverUpdatedByEmail?: string
+	@field("server_updated_ts") serverUpdatedTs?: number
+
 	@field("created_ts") createdTs!: number
 
 	get detailedConflicts(): ConflictField[] {

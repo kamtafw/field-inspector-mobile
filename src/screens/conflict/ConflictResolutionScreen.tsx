@@ -23,6 +23,29 @@ type MergedData = {
 	version: any
 }
 
+function formatTimeAgo(timestamp: number): string {
+	const now = Date.now()
+	const diffMs = now - timestamp
+	const diffMins = Math.floor(diffMs / 60000)
+	const diffHours = Math.floor(diffMs / 3600000)
+	const diffDays = Math.floor(diffMs / 86400000)
+
+	if (diffMins < 1) return "Just now"
+	if (diffMins === 1) return "1 minute ago"
+	if (diffMins < 60) return `${diffMins} minutes ago`
+	if (diffHours === 1) return "1 hour ago"
+	if (diffHours < 24) return `${diffHours} hours ago`
+	if (diffDays === 1) return "Yesterday"
+	if (diffDays < 7) return `${diffDays} days ago`
+
+	// format as date for older changes
+	return new Date(timestamp).toLocaleDateString("en-US", {
+		month: "short",
+		day: "numeric",
+		year: diffDays > 365 ? "numeric" : undefined,
+	})
+}
+
 type FieldSelection = {
 	[fieldName: string]: "client" | "server"
 }
@@ -332,6 +355,24 @@ export default function ConflictResolutionScreen() {
 						This inspection was edited by another user while you were offline. You need to choose
 						which changes to keep.
 					</Text>
+
+					{conflict.serverUpdatedByName && (
+						<View className="bg-white rounded-lg p-3 mb-3">
+							<Text className="text-xs text-[#666] mb-1">Server changes made by:</Text>
+							<Text className="text-sm text-[#1a1a1a] font-semibold">
+								{conflict.serverUpdatedByName}
+							</Text>
+							{conflict.serverUpdatedByEmail && (
+								<Text className="text-xs text-[#666] mt-1">{conflict.serverUpdatedByEmail}</Text>
+							)}
+							{conflict.serverUpdatedTs && (
+								<Text className="text-xs text-[#666] mt-1">
+									{formatTimeAgo(conflict.serverUpdatedTs)}
+								</Text>
+							)}
+						</View>
+					)}
+
 					<View className="flex-row gap-2">
 						<View className="bg-white px-4 py-2 rounded-2xl">
 							<Text className="text-sm text-[#856404] font-semibold">
