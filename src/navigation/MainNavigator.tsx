@@ -6,6 +6,7 @@ import { MainStackParamList } from "./types"
 import CreateInspectionScreen from "../screens/inspection/CreateInspectionScreen"
 import ConflictListScreen from "../screens/conflict/ConflictListScreen"
 import ConflictResolutionScreen from "../screens/conflict/ConflictResolutionScreen"
+import InspectionDetailScreen from "../screens/inspection/InspectionDetailScreen"
 
 const Stack = createNativeStackNavigator<MainStackParamList>()
 
@@ -21,7 +22,14 @@ export default function MainNavigator() {
 
 			<Stack.Screen name="ConflictList" component={ConflictListScreen} />
 			<Stack.Screen name="ConflictResolution" component={ConflictResolutionScreen} />
-			{/* <Stack.Screen/> */}
+			<Stack.Screen
+				name="InspectionDetail"
+				component={InspectionDetailScreen}
+				options={{
+					headerShown: false,
+					presentation: "card",
+				}}
+			/>
 		</Stack.Navigator>
 	)
 }

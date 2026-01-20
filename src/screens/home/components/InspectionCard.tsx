@@ -42,6 +42,7 @@ function InspectionCard({ inspection }: InspectionProp) {
 		if (inspection.status === "conflict") {
 			navigation.navigate("ConflictResolution", { inspectionId: inspection.id })
 		} else {
+			navigation.navigate("InspectionDetail", { id: inspection.id })
 		}
 	}
 
