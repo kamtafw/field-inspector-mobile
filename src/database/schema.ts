@@ -3,7 +3,7 @@
 import { appSchema, tableSchema } from "@nozbe/watermelondb"
 
 export default appSchema({
-	version: 5,
+	version: 6,
 	tables: [
 		tableSchema({
 			name: "users",
@@ -93,6 +93,31 @@ export default appSchema({
 				{ name: "server_updated_by_email", type: "string", isOptional: true },
 				{ name: "server_updated_ts", type: "number", isOptional: true },
 
+				{ name: "created_ts", type: "number" },
+			],
+		}),
+
+		tableSchema({
+			name: "photos",
+			columns: [
+				{ name: "inspection_id", type: "string", isIndexed: true },
+
+				{ name: "local_uri", type: "string" },
+
+				{ name: "s3_key", type: "string", isOptional: true },
+				{ name: "s3_url", type: "string", isOptional: true },
+
+				{ name: "upload_status", type: "string", isIndexed: true }, // pending, uploading, completed, failed
+				{ name: "upload_progress", type: "number" },
+				{ name: "upload_error", type: "string", isOptional: true },
+
+				{ name: "file_size", type: "number" },
+				{ name: "width", type: "number", isOptional: true },
+				{ name: "height", type: "number", isOptional: true },
+				{ name: "mime_type", type: "string" },
+
+				{ name: "captured_ts", type: "number" },
+				{ name: "uploaded_ts", type: "number", isOptional: true },
 				{ name: "created_ts", type: "number" },
 			],
 		}),

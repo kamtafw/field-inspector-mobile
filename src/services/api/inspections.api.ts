@@ -38,11 +38,11 @@ export interface InspectionResponseDTO {
 		first_name: string
 		last_name: string
 	}
-	approved_at?: string // ISO date string
+	approved_at?: string
 	approval_notes?: string
-	created_at: string // ISO date string
-	submitted_at?: string // ISO date string
-	updated_at: string // ISO date string
+	created_at: string
+	submitted_at?: string
+	updated_at: string
 	updated_by: {
 		name: string
 		email: string
