@@ -16,8 +16,8 @@ export default class Photo extends Model {
 	@text("local_uri") localUri!: string
 
 	// S3 details (after upload)
-	@text("s3_key") s3Key?: string
-	@text("s3_url") s3Url?: string
+	@text("cloudinary_public_id") cloudinaryPublicId?: string
+	@text("cloudinary_url") cloudinaryUrl?: string
 
 	// upload state
 	@text("upload_status") uploadStatus!: "pending" | "uploading" | "completed" | "failed"

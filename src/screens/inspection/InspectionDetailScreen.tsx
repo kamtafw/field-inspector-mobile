@@ -17,6 +17,7 @@ import {
 	View,
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
+import PhotoGallery from "./components/PhotoGallery"
 
 type InspectionDetailRouteProp = RouteProp<MainStackParamList, "InspectionDetail">
 type NavigationProp = NativeStackNavigationProp<MainStackParamList>
@@ -181,6 +182,10 @@ export default function InspectionDetailScreen() {
 	const canEdit = inspection.status === "draft" || inspection.status === "conflict"
 	const canSubmit = inspection.status === "draft"
 	const canDelete = inspection.status === "draft"
+	const canAddPhotos =
+		inspection.status === "draft" ||
+		inspection.status === "submitted" ||
+		inspection.status === "synced"
 
 	return (
 		<SafeAreaView className="flex-1 bg-background">
@@ -359,13 +364,7 @@ export default function InspectionDetailScreen() {
 				</View>
 
 				{/* Photos Section */}
-				<View className="bg-white rounded-xl p-4 mb-4">
-					<Text className="text-lg text-[#1a1a1a] font-semibold mb-4">Photos</Text>
-					<View className="items-center py-8 border-2 border-dashed border-[#e0e0e0] rounded-lg">
-						<Text className="text-sm text-[#999]">📸</Text>
-						<Text className="text-sm text-[#999] mt-2">Photo upload coming in Week 4</Text>
-					</View>
-				</View>
+				<PhotoGallery inspectionId={inspection.id} canEdit={canAddPhotos} />
 
 				{/* Sync Error Display */}
 				{inspection.syncError && (

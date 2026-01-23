@@ -113,7 +113,11 @@ class PhotoRepository {
 	}
 
 	/** Mark photo as uploaded */
-	async markUploaded(photoId: string, s3Key: string, s3Url: string): Promise<void> {
+	async markUploaded(
+		photoId: string,
+		cloudinaryPublicId: string,
+		cloudinaryUrl: string
+	): Promise<void> {
 		const photo = await this.getById(photoId)
 		if (!photo) return
 
@@ -121,14 +125,14 @@ class PhotoRepository {
 			await photo.update((record) => {
 				record.uploadStatus = "completed"
 				record.uploadProgress = 100
-				record.s3Key = s3Key
-				record.s3Url = s3Url
+				record.cloudinaryPublicId = cloudinaryPublicId
+				record.cloudinaryUrl = cloudinaryUrl
 				record.uploadedTs = Date.now()
 				record.uploadError = undefined
 			})
 		})
 
-		console.log(`✅ Photo uploaded: ${photoId} → ${s3Key}`)
+		console.log(`✅ Photo uploaded: ${photoId} → ${cloudinaryPublicId}`)
 	}
 
 	/** Mark photo upload as failed */

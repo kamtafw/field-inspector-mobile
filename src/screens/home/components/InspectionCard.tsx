@@ -69,7 +69,7 @@ function InspectionCard({ inspection }: InspectionProp) {
 			status: "submitted",
 		})
 
-		SyncEngine.process()
+		SyncEngine.processQueue()
 	}
 
 	const formattedDate = new Date(inspection.createdTs).toLocaleDateString("en-US", {

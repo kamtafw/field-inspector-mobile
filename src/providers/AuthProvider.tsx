@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		setUserId(data.user.id)
 
 		// resume sync after login
-		await SyncEngine.process()
+		await SyncEngine.processQueue()
 	}
 
 	const logout = async () => {

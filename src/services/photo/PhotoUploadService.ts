@@ -2,6 +2,7 @@ import * as FileSystem from "expo-file-system/legacy"
 import NetInfo from "@react-native-community/netinfo"
 import PhotosAPI from "@/src/services/api/photos.api"
 import PhotoRepository from "@/src/database/repositories/PhotoRepository"
+import InspectionRepository from "@/src/database/repositories/InspectionRepository"
 
 interface UploadProgress {
 	photoId: string
@@ -72,14 +73,26 @@ class PhotoUploadService {
 		}
 	}
 
-	/** Upload a single photo to S3 */
+	/** Upload a single photo to Cloudinary */
 	async uploadPhoto(photoId: string): Promise<void> {
 		const photo = await PhotoRepository.getById(photoId)
 		if (!photo) {
 			throw new Error(`Photo ${photoId} not found`)
 		}
 
-		console.log(`📸 Uploading photo: ${photoId}...`)
+		const inspection = await InspectionRepository.getById(photo.inspectionId)
+		if (!inspection) {
+			throw new Error(`Inspection ${photo.inspectionId} not found`)
+		}
+
+		if (!inspection.remoteId) {
+			const errorMsg = "Cannot upload photo: inspection not synced yet (no remote_id)"
+			console.warn(errorMsg)
+			await PhotoRepository.markFailed(photoId, errorMsg)
+			throw new Error(errorMsg)
+		}
+
+		console.log(`📸 Uploading photo: ${photoId} to Cloudinary...`)
 
 		try {
 			await PhotoRepository.markUploading(photoId)
@@ -87,20 +100,18 @@ class PhotoUploadService {
 
 			// step 1: request pre-signed URL from server
 			console.log("📝 Requesting upload URL from backend...")
-			const uploadData = await PhotosAPI.requestUploadUrl({
-				inspection_id: photo.inspectionId,
-				file_extension: photo.mimeType === "image/png" ? "png" : "jpg",
-				content_type: photo.mimeType,
+			const uploadData = await PhotosAPI.requestUploadParams({
+				inspection_id: inspection.remoteId,
 			})
 
 			this.notifyProgress({ photoId, progress: 10 })
 
-			// step 2: upload directly to S3
-			console.log("☁️ Uploading to S3...")
-			await this.uploadToS3(
+			// step 2: upload directly to Cloudinary
+			console.log("☁️ Uploading to Cloudinary...")
+			const cloudinaryResponse = await this.uploadToCloudinary(
 				photo.localUri,
 				uploadData.upload_url,
-				uploadData.upload_fields,
+				uploadData.upload_params,
 				(progress) => {
 					const mappedProgress = 10 + progress * 0.8
 					this.notifyProgress({ photoId, progress: mappedProgress })
@@ -112,19 +123,23 @@ class PhotoUploadService {
 			// step 3: confirm upload with backend
 			console.log("✅ Confirming upload with backend...")
 			await PhotosAPI.confirmUpload({
-				inspection_id: photo.inspectionId,
-				s3_key: uploadData.s3_key,
-				s3_url: uploadData.s3_url,
+				inspection_id: inspection.remoteId,
+				cloudinary_public_id: cloudinaryResponse.public_id,
+				cloudinary_url: cloudinaryResponse.secure_url,
 				file_size: photo.fileSize,
 				width: photo.width,
 				height: photo.height,
 			})
 
 			// mark as uploaded
-			await PhotoRepository.markUploaded(photoId, uploadData.s3_key, uploadData.s3_url)
+			await PhotoRepository.markUploaded(
+				photoId,
+				cloudinaryResponse.public_id,
+				cloudinaryResponse.secure_url
+			)
 			this.notifyProgress({ photoId, progress: 100 })
 
-			console.log(`✅ Photo ${photoId} uploaded successfully`)
+			console.log(`✅ Photo ${photoId} uploaded successfully to Cloudinary`)
 		} catch (err: any) {
 			console.error("❌ Photo upload failed:", err)
 			await PhotoRepository.markFailed(photoId, err.message || "Upload failed")
@@ -132,52 +147,89 @@ class PhotoUploadService {
 		}
 	}
 
-	/** Upload file to S3 using pre-signed POST */
-	private async uploadToS3(
+	/** Upload file to Cloudinary using signed parameters */
+	private async uploadToCloudinary(
 		localUri: string,
 		uploadUrl: string,
-		fields: Record<string, string>,
+		params: Record<string, any>,
 		onProgress?: (progress: number) => void
-	): Promise<void> {
+	): Promise<{ public_id: string; secure_url: string }> {
 		try {
 			const formData = new FormData()
 
-			// add all required fields from pre-signed POST
-			Object.keys(fields).forEach((key) => {
-				formData.append(key, fields[key])
-			})
+			// add params in exact order they were signed
+			formData.append("api_key", params.api_key)
+			formData.append("timestamp", params.timestamp.toString())
+			formData.append("signature", params.signature)
+
+			if (params.folder) formData.append("folder", params.folder)
+			if (params.public_id) formData.append("public_id", params.public_id)
 
 			const file = {
 				uri: localUri,
-				type: fields["Content-Type"] || "image/jpeg",
+				type: "image/jpeg",
 				name: "photo.jpg",
 			} as any
 
 			formData.append("file", file)
 
-			// upload to S3
-			const uploadTask = FileSystem.createUploadTask(
-				uploadUrl,
-				localUri,
-				{
-					httpMethod: "POST",
-					uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-					fieldName: "file",
-					parameters: fields,
-				},
-				(data) => {
-					const progress = data.totalBytesSent / data.totalBytesExpectedToSend
-					onProgress?.(progress)
-				}
-			)
+			console.log("📤 Uploading to Cloudinary with params:", {
+				api_key: params.api_key,
+				timestamp: params.timestamp,
+				folder: params.folder,
+				public_id: params.public_id,
+				has_signature: !!params.signature,
+			})
 
-			const result = await uploadTask.uploadAsync()
+			// upload to Cloudinary
+			const xhr = new XMLHttpRequest()
 
-			if (!result || result.status !== 204) {
-				throw new Error(`S3 upload failed with status ${result?.status}`)
-			}
+			return new Promise((resolve, reject) => {
+				// progress tracking
+				xhr.upload.addEventListener("progress", (event) => {
+					if (event.lengthComputable) {
+						const progress = event.loaded / event.total
+						onProgress?.(progress)
+					}
+				})
+
+				// success
+				xhr.addEventListener("load", () => {
+					console.log("📥 Cloudinary response status:", xhr.status)
+					console.log("📥 Cloudinary response:", xhr.responseText)
+
+					if (xhr.status === 200) {
+						try {
+							const response = JSON.parse(xhr.responseText)
+							resolve({
+								public_id: response.public_id,
+								secure_url: response.secure_url,
+							})
+						} catch (err) {
+							reject(new Error("Failed to parse Cloudinary response"))
+						}
+					} else {
+						reject(new Error(`Upload failed with status ${xhr.status}`))
+					}
+				})
+
+				// error
+				xhr.addEventListener("error", () => {
+					reject(new Error("Network error during upload"))
+				})
+
+				// timeout
+				xhr.addEventListener("timeout", () => {
+					reject(new Error("Upload timeout"))
+				})
+
+				// start upload
+				xhr.open("POST", uploadUrl)
+				xhr.timeout = 60000 // 60 second timeout
+				xhr.send(formData)
+			})
 		} catch (err) {
-			console.error("S3 upload error:", err)
+			console.error("Cloudinary upload error:", err)
 			throw err
 		}
 	}

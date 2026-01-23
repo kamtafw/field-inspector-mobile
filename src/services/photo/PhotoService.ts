@@ -1,5 +1,5 @@
 import * as ImagePicker from "expo-image-picker"
-import * as FileSystem from "expo-file-system"
+import * as FileSystem from "expo-file-system/legacy"
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator"
 
 interface CapturedPhoto {
@@ -17,14 +17,14 @@ class PhotoService {
 
 	/** Request camera permissions */
 	async requestCameraPermissions(): Promise<boolean> {
-		const { status } = await ImagePicker.requestCameraPermissionsAsync()
-		return status === "granted"
+		const status = await ImagePicker.requestCameraPermissionsAsync()
+		return status.granted
 	}
 
 	/** Request media library permissions */
 	async requestMediaLibraryPermissions(): Promise<boolean> {
-		const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-		return status === "granted"
+		const status = await ImagePicker.requestMediaLibraryPermissionsAsync()
+		return status.granted
 	}
 
 	/** Take photo with camera */
@@ -36,7 +36,7 @@ class PhotoService {
 			}
 
 			const result = await ImagePicker.launchCameraAsync({
-				mediaTypes: ImagePicker.MediaTypeOptions.Images,
+				mediaTypes: ["images", "livePhotos"],
 				allowsEditing: true,
 				aspect: [4, 3],
 				quality: 1,
@@ -151,3 +151,5 @@ class PhotoService {
 		return await FileSystem.getInfoAsync(uri)
 	}
 }
+
+export default new PhotoService()

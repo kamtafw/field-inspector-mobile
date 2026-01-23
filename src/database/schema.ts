@@ -3,7 +3,7 @@
 import { appSchema, tableSchema } from "@nozbe/watermelondb"
 
 export default appSchema({
-	version: 6,
+	version: 7,
 	tables: [
 		tableSchema({
 			name: "users",
@@ -104,8 +104,8 @@ export default appSchema({
 
 				{ name: "local_uri", type: "string" },
 
-				{ name: "s3_key", type: "string", isOptional: true },
-				{ name: "s3_url", type: "string", isOptional: true },
+				{ name: "cloudinary_public_id", type: "string", isOptional: true },
+				{ name: "cloudinary_url", type: "string", isOptional: true },
 
 				{ name: "upload_status", type: "string", isIndexed: true }, // pending, uploading, completed, failed
 				{ name: "upload_progress", type: "number" },

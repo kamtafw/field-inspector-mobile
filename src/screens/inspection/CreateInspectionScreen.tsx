@@ -120,7 +120,7 @@ export default function CreateInspectionScreen() {
 					text: "OK",
 					onPress: async () => {
 						navigation.goBack()
-						await SyncEngine.process()
+						await SyncEngine.processQueue()
 					},
 				},
 			])

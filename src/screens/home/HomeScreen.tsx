@@ -56,7 +56,7 @@ function HomeScreenComponent({ inspections }: { inspections: Inspection[] }) {
 	const onRefresh = async () => {
 		setRefreshing(true)
 		try {
-			await SyncEngine.process()
+			await SyncEngine.processQueue()
 
 			await loadConflictCount()
 		} catch (err) {

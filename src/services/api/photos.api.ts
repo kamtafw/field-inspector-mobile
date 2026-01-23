@@ -1,22 +1,26 @@
 import api from "./client"
 
-interface RequestUploadUrlPayload {
+interface RequestUploadParamsPayload {
 	inspection_id: string
-	file_extension: string
-	content_type: string
 }
 
-interface UploadUrlResponse {
+interface UploadParamsResponse {
 	upload_url: string
-	upload_fields: Record<string, string>
-	s3_key: string
-	s3_url: string
+	upload_params: {
+		api_key: string
+		timestamp: number
+		signature: string
+		folder: string
+		public_id: string
+	}
+	public_id: string
+	cloudinary_url: string
 }
 
 interface ConfirmUploadPayload {
 	inspection_id: string
-	s3_key: string
-	s3_url: string
+	cloudinary_public_id: string
+	cloudinary_url: string
 	file_size: number
 	width?: number
 	height?: number
@@ -25,8 +29,10 @@ interface ConfirmUploadPayload {
 interface PhotoResponse {
 	id: string
 	inspection: string
-	s3_key: string
-	s3_url: string
+	cloudinary_public_id: string
+	cloudinary_url: string
+	thumbnail_url: string
+	medium_url: string
 	file_size: number
 	width?: number
 	height?: number
@@ -34,13 +40,13 @@ interface PhotoResponse {
 }
 
 class PhotosAPI {
-	/** Request pre-signed URL for uploading photo to S3 */
-	async requestUploadUrl(payload: RequestUploadUrlPayload): Promise<UploadUrlResponse> {
-		const response = await api.post<UploadUrlResponse>("/photos/upload-url/", payload)
+	/** Request Cloudinary signed upload parameters */
+	async requestUploadParams(payload: RequestUploadParamsPayload): Promise<UploadParamsResponse> {
+		const response = await api.post<UploadParamsResponse>("/photos/upload-params/", payload)
 		return response.data
 	}
 
-	/** Confirm that photo was uploaded to S3 */
+	/** Confirm that photo was uploaded to Cloudinary */
 	async confirmUpload(payload: ConfirmUploadPayload): Promise<PhotoResponse> {
 		const response = await api.post<PhotoResponse>("/photos/confirm-upload/", payload)
 		return response.data
@@ -56,7 +62,7 @@ class PhotosAPI {
 
 	/** Delete a photo */
 	async deletePhoto(photoId: string): Promise<void> {
-		await api.delete(`/photos/${photoId}`)
+		await api.delete(`/photos/${photoId}/`)
 	}
 }
 

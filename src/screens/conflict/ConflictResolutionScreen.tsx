@@ -211,7 +211,7 @@ export default function ConflictResolutionScreen() {
 			// mark conflict as resolved
 			await ConflictRepository.markResolved(conflict.id, strategy)
 
-			await SyncEngine.process()
+			await SyncEngine.processQueue()
 
 			Alert.alert("Conflict Resolved", "Your changes have been saved and will sync when online.", [
 				{
