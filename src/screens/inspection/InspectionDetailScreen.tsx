@@ -18,6 +18,8 @@ import {
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import PhotoGallery from "./components/PhotoGallery"
+import EmptyState from "@/src/components/ui/EmptyState"
+import { InspectionDetailSkeleton } from "@/src/components/ui/SkeletonLoader"
 
 type InspectionDetailRouteProp = RouteProp<MainStackParamList, "InspectionDetail">
 type NavigationProp = NativeStackNavigationProp<MainStackParamList>
@@ -163,18 +165,41 @@ export default function InspectionDetailScreen() {
 
 	if (isLoading) {
 		return (
-			<View className="flex-1 justify-center items-center">
-				<ActivityIndicator size="large" color="#007aff" />
-				<Text className="mt-3 text-base text-[#666]">Loading inspection...</Text>
-			</View>
+			<SafeAreaView className="flex-1 bg-background">
+				<View className="flex-row justify-between items-center p-5 pt-10 bg-white border-b border-[#e0e0e0]">
+					<TouchableOpacity onPress={() => navigation.goBack()}>
+						<Text className="text-base text-[#007aff]">← Back</Text>
+					</TouchableOpacity>
+
+					<View className="flex-1 mx-4">
+						<Text className="text-lg font-semibold text-center text-[#1a1a1a]">
+							Inspection Details
+						</Text>
+					</View>
+				</View>
+
+				<InspectionDetailSkeleton />
+			</SafeAreaView>
 		)
 	}
 
 	if (!inspection) {
 		return (
-			<View className="flex-1 justify-center items-center p-5">
-				<Text className="text-base text-[#ff3b30]">Inspection not found</Text>
-			</View>
+			<SafeAreaView className="flex-1 bg-background">
+				<View className="flex-row justify-between items-center p-5 pt-10 bg-white border-b border-[#e0e0e0]">
+					<TouchableOpacity onPress={() => navigation.goBack()}>
+						<Text className="text-base text-[#007aff]">← Back</Text>
+					</TouchableOpacity>
+
+					<View className="flex-1 mx-4">
+						<Text className="text-lg font-semibold text-center text-[#1a1a1a]">
+							Inspection Details
+						</Text>
+					</View>
+				</View>
+
+				<EmptyState icon="📋" title="No Inspection" message="Inspection does not exist" />
+			</SafeAreaView>
 		)
 	}
 
@@ -331,9 +356,9 @@ export default function InspectionDetailScreen() {
 										<View
 											className={clsx(
 												"px-3 py-1.5 rounded-full",
-												response.value === "Pass"
+												response.value === "pass"
 													? "bg-[#e8f8ec]"
-													: response.value === "Fail"
+													: response.value === "fail"
 													? "bg-[#ffebee]"
 													: "bg-[#f0f0f0]"
 											)}
@@ -341,9 +366,9 @@ export default function InspectionDetailScreen() {
 											<Text
 												className={clsx(
 													"text-sm font-semibold",
-													response.value === "Pass"
+													response.value.toLowerCase() === "pass"
 														? "text-[#34c759]"
-														: response.value === "Fail"
+														: response.value.toLowerCase() === "fail"
 														? "text-[#ff3b30]"
 														: "text-[#666]"
 												)}

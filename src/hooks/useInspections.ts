@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useState } from "react"
-import Inspection from "../database/models/Inspection"
+import { Subscription } from "rxjs"
+import { Q } from "@nozbe/watermelondb"
+import database from "@/src/database"
+import Inspection from "@/src/database/models/Inspection"
 import InspectionRepository, {
 	CreateInspectionPayload,
 	UpdateInspectionPayload,
-} from "../database/repositories/InspectionRepository"
-import database from "../database"
-import { Q } from "@nozbe/watermelondb"
-import { useAuth } from "../providers/AuthProvider"
+} from "@/src/database/repositories/InspectionRepository"
+import { useAuth } from "@/src/providers/AuthProvider"
+import ErrorAlert from "@/src/components/ui/ErrorAlert"
+import ErrorHandler from "@/src/services/error/ErrorHandler"
 
 interface UseInspectionsReturn {
-	inspections: Inspection[]
+	inspections: Inspection[] | null
 
 	isLoading: boolean
 	isCreating: boolean
@@ -23,49 +26,56 @@ interface UseInspectionsReturn {
 	getInspectionById: (id: string) => Promise<Inspection | null>
 
 	submitInspection: (id: string) => Promise<void>
-	refresh: () => Promise<void>
 }
 
 export default function useInspections(): UseInspectionsReturn {
 	const { userId } = useAuth()
 
-	const [inspections, setInspections] = useState<Inspection[]>([])
+	const [inspections, setInspections] = useState<Inspection[] | null>(null)
 	const [isLoading, setIsLoading] = useState(true)
-	const [isCreating, setIsCreating] = useState(false)
 	const [isUpdating, setIsUpdating] = useState(true)
+	const [isCreating, setIsCreating] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 
-	// load inspections when user change
 	useEffect(() => {
-		if (userId) {
-			loadInspections()
+		let subscription: Subscription | null = null
+
+		// load inspections when user change
+		const loadAndObserve = async () => {
+			if (!userId) return
+
+			try {
+				setIsLoading(true)
+				setError(null)
+
+				const collection = database.get<Inspection>("inspections")
+				let query = collection.query(Q.where("inspector_id", userId))
+
+				// apply status filter
+				// apply search filter
+				// apply date range filter
+
+				// sort by most recent
+				query = collection.query(Q.sortBy("created_ts", Q.desc))
+
+				subscription = query.observe().subscribe((records) => {
+					setInspections(records)
+				})
+			} catch (err: any) {
+				console.error("Error loading inspections:", err)
+				const errorMessage = ErrorHandler.getSimpleMessage(err)
+				setError(errorMessage)
+			} finally {
+				setIsLoading(false)
+			}
 		}
-	}, [userId])
 
-	const loadInspections = useCallback(async () => {
-		if (!userId) return
+		loadAndObserve()
 
-		try {
-			setIsLoading(true)
-			setError(null)
-
-			const collection = database.get<Inspection>("inspections")
-			let query = collection.query(Q.where("inspector_id", userId))
-
-			// apply status filter
-			// apply search filter
-			// apply date range filter
-			// sort by most recent
-
-			const results = await query.fetch()
-			setInspections(results)
-
-			// load stats
-		} catch (err: any) {
-			setError(err.message)
-			console.error("Error loading inspections:", err)
-		} finally {
-			setIsLoading(false)
+		return () => {
+			if (subscription) {
+				subscription.unsubscribe()
+			}
 		}
 	}, [userId])
 
@@ -87,17 +97,14 @@ export default function useInspections(): UseInspectionsReturn {
 				},
 				userId
 			)
-
 			console.log("✅ Inspection created:", inspection.id)
-
-			// TODO: doubt this is necessary cos of withObservables
-			// await loadInspections()
 
 			return inspection
 		} catch (err: any) {
 			const errorMessage = err.message || "Failed to create inspection"
 			setError(errorMessage)
 			console.error("Error creating inspection:", err)
+			ErrorAlert.show(err, () => createInspection(data))
 			throw err
 		} finally {
 			setIsCreating(false)
@@ -117,17 +124,12 @@ export default function useInspections(): UseInspectionsReturn {
 
 		try {
 			const inspection = await InspectionRepository.update(id, data)
-
 			console.log("✅ Inspection updated:", inspection.id)
-
-			// TODO: doubt this is necessary cos of withObservables
-			// await loadInspections()
 
 			return inspection
 		} catch (err: any) {
-			const errorMessage = err.message || "Failed to update inspection"
-			setError(errorMessage)
 			console.error("Error updating inspection:", err)
+			ErrorAlert.show(err, () => updateInspection(id, data))
 			throw err
 		} finally {
 			setIsUpdating(false)
@@ -139,15 +141,10 @@ export default function useInspections(): UseInspectionsReturn {
 
 		try {
 			await InspectionRepository.delete(id)
-
 			console.log("✅ Inspection deleted:", id)
-
-			// TODO: doubt this is necessary cos of withObservables
-			await loadInspections()
 		} catch (err: any) {
-			const errorMessage = err.message || "Failed to delete inspection"
-			setError(errorMessage)
 			console.error("Error deleting inspection:", err)
+			ErrorAlert.show(err, () => deleteInspection(id))
 			throw err
 		}
 	}
@@ -168,13 +165,9 @@ export default function useInspections(): UseInspectionsReturn {
 			console.log("📤 Inspection submitted, triggering sync...")
 		} catch (err) {
 			console.error("Failed to submit inspection:", err)
+			ErrorAlert.show(err, () => deleteInspection(id))
 			throw err
 		}
-	}
-
-	/** Refresh (reload) inspections */
-	const refresh = async () => {
-		await loadInspections()
 	}
 
 	return {
@@ -197,6 +190,5 @@ export default function useInspections(): UseInspectionsReturn {
 
 		// actions
 		submitInspection,
-		refresh,
 	}
 }

@@ -6,6 +6,7 @@ import ConflictRepository from "@/src/database/repositories/ConflictRepository"
 import InspectionRepository from "@/src/database/repositories/InspectionRepository"
 import SyncRepository from "@/src/database/repositories/SyncRepository"
 import PhotoUploadService from "../photo/PhotoUploadService"
+import ErrorAlert from "@/src/components/ui/ErrorAlert"
 
 export type SyncStatus = "idle" | "syncing" | "error"
 
@@ -85,6 +86,7 @@ class SyncEngine {
 		} catch (err) {
 			console.error(`❌ SyncEngine: Fatal error during sync:`, err)
 			this.updateStatus("error")
+			ErrorAlert.show(err)
 		} finally {
 			this.isProcessing = false
 
@@ -189,6 +191,8 @@ class SyncEngine {
 			for (const operation of operations) {
 				await SyncRepository.markFailed(operation.id, "Batch sync failed:" + err.message)
 			}
+
+			ErrorAlert.show(err)
 		}
 	}
 
