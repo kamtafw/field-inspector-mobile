@@ -95,7 +95,7 @@ export default function useInspections(): UseInspectionsReturn {
 					facilityAddress: data.facilityAddress,
 					responses: JSON.parse(JSON.stringify(data.responses)),
 				},
-				userId
+				userId,
 			)
 			console.log("✅ Inspection created:", inspection.id)
 
@@ -113,7 +113,7 @@ export default function useInspections(): UseInspectionsReturn {
 
 	const updateInspection = async (
 		id: string,
-		data: UpdateInspectionPayload
+		data: UpdateInspectionPayload,
 	): Promise<Inspection> => {
 		if (!userId) {
 			throw new Error("User must be authenticated to create an inspection")
@@ -124,8 +124,6 @@ export default function useInspections(): UseInspectionsReturn {
 
 		try {
 			const inspection = await InspectionRepository.update(id, data)
-			console.log("✅ Inspection updated:", inspection.id)
-
 			return inspection
 		} catch (err: any) {
 			console.error("Error updating inspection:", err)
@@ -161,7 +159,7 @@ export default function useInspections(): UseInspectionsReturn {
 	/** Submit inspection (change inspection status to submitted) */
 	const submitInspection = async (id: string): Promise<void> => {
 		try {
-			await updateInspection(id, { status: "submitted" })
+			await InspectionRepository.submitInspection(id)
 			console.log("📤 Inspection submitted, triggering sync...")
 		} catch (err) {
 			console.error("Failed to submit inspection:", err)

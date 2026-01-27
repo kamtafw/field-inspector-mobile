@@ -99,7 +99,7 @@ export default function CreateInspectionScreen() {
 				[
 					{ text: "Cancel", style: "cancel" },
 					{ text: "Save Draft", onPress: handleSaveDraft },
-				]
+				],
 			)
 			return
 		}
@@ -120,7 +120,6 @@ export default function CreateInspectionScreen() {
 					text: "OK",
 					onPress: async () => {
 						navigation.goBack()
-						await SyncEngine.processQueue()
 					},
 				},
 			])
@@ -184,14 +183,14 @@ export default function CreateInspectionScreen() {
 									<TouchableOpacity
 										className={clsx(
 											"flex-1 bg-gray-50 border-2 border-[#e0e0e0] rounded-lg p-3 items-center",
-											responses[item.id]?.value === "pass" && "bg-green-100 border-green-600"
+											responses[item.id]?.value === "pass" && "bg-green-100 border-green-600",
 										)}
 										onPress={() => handleResponseChange(item.id, "pass")}
 									>
 										<Text
 											className={clsx(
 												"text-base text-[#666] font-semibold",
-												responses[item.id]?.value === "pass" && "text-[#1a1a1a]"
+												responses[item.id]?.value === "pass" && "text-[#1a1a1a]",
 											)}
 										>
 											✓ Pass
@@ -200,14 +199,14 @@ export default function CreateInspectionScreen() {
 									<TouchableOpacity
 										className={clsx(
 											"flex-1 bg-gray-50 border-2 border-[#e0e0e0] rounded-lg p-3 items-center",
-											responses[item.id]?.value === "fail" && "bg-red-100 border-red-400"
+											responses[item.id]?.value === "fail" && "bg-red-100 border-red-400",
 										)}
 										onPress={() => handleResponseChange(item.id, "fail")}
 									>
 										<Text
 											className={clsx(
 												"text-base text-[#666] font-semibold",
-												responses[item.id]?.value === "pass" && "text-[#1a1a1a]"
+												responses[item.id]?.value === "pass" && "text-[#1a1a1a]",
 											)}
 										>
 											✕ Fail

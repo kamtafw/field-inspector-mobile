@@ -5,6 +5,7 @@ import SQLiteAdapter from "@nozbe/watermelondb/adapters/sqlite"
 import schema from "./schema"
 import migrations from "./migrations"
 
+import InspectionTemplate from "./models/InspectionTemplate"
 import Inspection from "./models/Inspection"
 import SyncOperation from "./models/SyncOperation"
 import Conflict from "./models/Conflict"
@@ -22,7 +23,7 @@ const adapter = new SQLiteAdapter({
 
 const database = new Database({
 	adapter,
-	modelClasses: [Inspection, SyncOperation, Conflict, Photo],
+	modelClasses: [InspectionTemplate, Inspection, SyncOperation, Conflict, Photo],
 })
 
 export default database

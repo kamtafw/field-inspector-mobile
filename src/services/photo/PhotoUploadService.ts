@@ -12,12 +12,15 @@ interface UploadProgress {
 class PhotoUploadService {
 	private isProcessing = false
 	private progressListeners: Array<(progress: UploadProgress) => void> = []
+	private networkUnsubscribe?: () => void
 
 	/** Start processing photo upload queue */
 	async initialize(): Promise<void> {
 		console.log("📸 PhotoUploadService: Initializing...")
 
-		NetInfo.addEventListener((state) => {
+		this.networkUnsubscribe = NetInfo.addEventListener((state) => {
+			console.log("📸 Network changed:", state.isConnected ? "ONLINE" : "OFFLINE")
+
 			if (state.isConnected && !this.isProcessing) {
 				console.log("✅ Network available, processing photo uploads...")
 				this.processQueue()
@@ -27,6 +30,13 @@ class PhotoUploadService {
 		const netState = await NetInfo.fetch()
 		if (netState.isConnected) {
 			await this.processQueue()
+		}
+	}
+
+	/** Clean up on app close */
+	cleanup(): void {
+		if (this.networkUnsubscribe) {
+			this.networkUnsubscribe()
 		}
 	}
 
@@ -55,13 +65,14 @@ class PhotoUploadService {
 
 			console.log(`📸 Processing ${pendingPhotos.length} pending photo uploads...`)
 
-			// process photos one at a time (avoid overwhelming S3)
+			// process photos one at a time
 			for (const photo of pendingPhotos) {
 				try {
 					await this.uploadPhoto(photo.id)
 				} catch (err: any) {
 					console.error(`❌ Failed to upload photo ${photo.id}:`, err.message)
-					// continue with next photo
+					const errorMsg = this.getErrorMessage(err)
+					await PhotoRepository.markFailed(photo.id, errorMsg)
 				}
 			}
 
@@ -86,10 +97,9 @@ class PhotoUploadService {
 		}
 
 		if (!inspection.remoteId) {
-			const errorMsg = "Cannot upload photo: inspection not synced yet (no remote_id)"
-			console.warn(errorMsg)
-			await PhotoRepository.markFailed(photoId, errorMsg)
-			throw new Error(errorMsg)
+			console.log(`⏳ Photo ${photoId} waiting - inspection ${inspection.id} not synced yet`)
+			// not marked as failed - skipped; will retry when inspection syncs
+			return
 		}
 
 		console.log(`📸 Uploading photo: ${photoId} to Cloudinary...`)
@@ -103,7 +113,6 @@ class PhotoUploadService {
 			const uploadData = await PhotosAPI.requestUploadParams({
 				inspection_id: inspection.remoteId,
 			})
-
 			this.notifyProgress({ photoId, progress: 10 })
 
 			// step 2: upload directly to Cloudinary
@@ -115,13 +124,12 @@ class PhotoUploadService {
 				(progress) => {
 					const mappedProgress = 10 + progress * 0.8
 					this.notifyProgress({ photoId, progress: mappedProgress })
-				}
+				},
 			)
-
 			this.notifyProgress({ photoId, progress: 90 })
 
 			// step 3: confirm upload with backend
-			console.log("✅ Confirming upload with backend...")
+			console.log("✅ Confirming upload...")
 			await PhotosAPI.confirmUpload({
 				inspection_id: inspection.remoteId,
 				cloudinary_public_id: cloudinaryResponse.public_id,
@@ -135,14 +143,13 @@ class PhotoUploadService {
 			await PhotoRepository.markUploaded(
 				photoId,
 				cloudinaryResponse.public_id,
-				cloudinaryResponse.secure_url
+				cloudinaryResponse.secure_url,
 			)
 			this.notifyProgress({ photoId, progress: 100 })
 
 			console.log(`✅ Photo ${photoId} uploaded successfully to Cloudinary`)
 		} catch (err: any) {
 			console.error("❌ Photo upload failed:", err)
-			await PhotoRepository.markFailed(photoId, err.message || "Upload failed")
 			throw err
 		}
 	}
@@ -152,86 +159,81 @@ class PhotoUploadService {
 		localUri: string,
 		uploadUrl: string,
 		params: Record<string, any>,
-		onProgress?: (progress: number) => void
+		onProgress?: (progress: number) => void,
 	): Promise<{ public_id: string; secure_url: string }> {
-		try {
-			const formData = new FormData()
+		const formData = new FormData()
 
-			// add params in exact order they were signed
-			formData.append("api_key", params.api_key)
-			formData.append("timestamp", params.timestamp.toString())
-			formData.append("signature", params.signature)
+		// add params in exact order they were signed
+		formData.append("api_key", params.api_key)
+		formData.append("timestamp", params.timestamp.toString())
+		formData.append("signature", params.signature)
 
-			if (params.folder) formData.append("folder", params.folder)
-			if (params.public_id) formData.append("public_id", params.public_id)
+		if (params.folder) formData.append("folder", params.folder)
+		if (params.public_id) formData.append("public_id", params.public_id)
 
-			const file = {
-				uri: localUri,
-				type: "image/jpeg",
-				name: "photo.jpg",
-			} as any
+		const file = {
+			uri: localUri,
+			type: "image/jpeg",
+			name: "photo.jpg",
+		} as any
 
-			formData.append("file", file)
+		formData.append("file", file)
 
-			console.log("📤 Uploading to Cloudinary with params:", {
-				api_key: params.api_key,
-				timestamp: params.timestamp,
-				folder: params.folder,
-				public_id: params.public_id,
-				has_signature: !!params.signature,
+		const xhr = new XMLHttpRequest()
+
+		return new Promise((resolve, reject) => {
+			xhr.upload.addEventListener("progress", (event) => {
+				if (event.lengthComputable) {
+					const progress = event.loaded / event.total
+					onProgress?.(progress)
+				}
 			})
 
-			// upload to Cloudinary
-			const xhr = new XMLHttpRequest()
-
-			return new Promise((resolve, reject) => {
-				// progress tracking
-				xhr.upload.addEventListener("progress", (event) => {
-					if (event.lengthComputable) {
-						const progress = event.loaded / event.total
-						onProgress?.(progress)
+			xhr.addEventListener("load", () => {
+				if (xhr.status === 200) {
+					try {
+						const response = JSON.parse(xhr.responseText)
+						resolve({
+							public_id: response.public_id,
+							secure_url: response.secure_url,
+						})
+					} catch (err) {
+						reject(new Error("Failed to parse Cloudinary response"))
 					}
-				})
-
-				// success
-				xhr.addEventListener("load", () => {
-					console.log("📥 Cloudinary response status:", xhr.status)
-					console.log("📥 Cloudinary response:", xhr.responseText)
-
-					if (xhr.status === 200) {
-						try {
-							const response = JSON.parse(xhr.responseText)
-							resolve({
-								public_id: response.public_id,
-								secure_url: response.secure_url,
-							})
-						} catch (err) {
-							reject(new Error("Failed to parse Cloudinary response"))
-						}
-					} else {
-						reject(new Error(`Upload failed with status ${xhr.status}`))
-					}
-				})
-
-				// error
-				xhr.addEventListener("error", () => {
-					reject(new Error("Network error during upload"))
-				})
-
-				// timeout
-				xhr.addEventListener("timeout", () => {
-					reject(new Error("Upload timeout"))
-				})
-
-				// start upload
-				xhr.open("POST", uploadUrl)
-				xhr.timeout = 60000 // 60 second timeout
-				xhr.send(formData)
+				} else {
+					reject(new Error(`Upload failed with status ${xhr.status}`))
+				}
 			})
-		} catch (err) {
-			console.error("Cloudinary upload error:", err)
-			throw err
+
+			xhr.addEventListener("error", () => {
+				reject(new Error("Network error during upload"))
+			})
+
+			xhr.addEventListener("timeout", () => {
+				reject(new Error("Upload timeout"))
+			})
+
+			xhr.open("POST", uploadUrl)
+			xhr.timeout = 60000
+			xhr.send(formData)
+		})
+	}
+
+	/** Get user-friendly error message */
+	private getErrorMessage(error: any): string {
+		if (error.message?.includes("not synced") || error.message?.includes("not found")) {
+			return "Waiting for inspection to sync"
 		}
+		if (error.message?.includes("Network")) {
+			return "Network error"
+		}
+		if (error.response?.status === 401) {
+			return "Upload credentials expired"
+		}
+		if (error.response?.status >= 500) {
+			return "Server error"
+		}
+		return "Upload failed"
 	}
 
 	/** Retry a failed upload */

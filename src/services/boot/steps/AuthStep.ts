@@ -1,5 +1,3 @@
-// Authentication restoration step
-
 import AuthService from "../../auth/AuthService"
 import { InitializationStep } from "../BootManager"
 
@@ -16,12 +14,6 @@ export const AuthStep: InitializationStep = {
 		restoredAuth = {
 			isAuthenticated,
 			userId: user?.id || null,
-		}
-
-		if (isAuthenticated && user) {
-			console.log(`Restored auth for user ${user.id}`)
-		} else {
-			console.log("No existing auth session")
 		}
 	},
 

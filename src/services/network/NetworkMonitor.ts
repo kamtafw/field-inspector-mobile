@@ -30,16 +30,28 @@ export type NetworkStatus = "online" | "offline" | "unknown"
 class NetworkMonitor {
 	private status: NetworkStatus = "unknown"
 	private listeners: Array<(status: NetworkStatus) => void> = []
+	private netInfoUnsubscribe?: () => void
 
 	/** Initialize network monitoring */
+	/** Initialize network monitoring */
 	initialize() {
-		NetInfo.addEventListener((state) => {
+		console.log("🌐 NetworkMonitor: Initializing...")
+
+		this.netInfoUnsubscribe = NetInfo.addEventListener((state) => {
 			this.handleNetworkChange(state)
 		})
 
+		// get initial state
 		NetInfo.fetch().then((state) => {
 			this.handleNetworkChange(state)
 		})
+	}
+
+	/** Cleanup */
+	cleanup() {
+		if (this.netInfoUnsubscribe) {
+			this.netInfoUnsubscribe()
+		}
 	}
 
 	/** Handle network state changes */
@@ -47,8 +59,10 @@ class NetworkMonitor {
 		const newStatus: NetworkStatus = state.isConnected ? "online" : "offline"
 
 		if (newStatus !== this.status) {
-			console.log(`🌐 Network status changed: ${this.status} → ${newStatus}`)
+			const oldStatus = this.status
 			this.status = newStatus
+
+			console.log(`🌐 Network status changed: ${oldStatus} → ${newStatus}`)
 			this.notifyListeners()
 		}
 	}
@@ -64,8 +78,11 @@ class NetworkMonitor {
 	}
 
 	/** Subscribe to network status changes */
-	addListener(callback: (status: NetworkStatus) => void) {
+	addListener(callback: (status: NetworkStatus) => void): () => void {
 		this.listeners.push(callback)
+
+		// return unsubscribe function
+		return () => this.removeListener(callback)
 	}
 
 	/** Unsubscribe to network status changes */
@@ -75,7 +92,13 @@ class NetworkMonitor {
 
 	/** Notify all listeners */
 	private notifyListeners() {
-		this.listeners.forEach((callback) => callback(this.status))
+		this.listeners.forEach((callback) => {
+			try {
+				callback(this.status)
+			} catch (err) {
+				console.error("Error in network listener:", err)
+			}
+		})
 	}
 }
 

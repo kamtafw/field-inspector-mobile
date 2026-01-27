@@ -1,5 +1,3 @@
-// Push notifications setup (Week 6+)
-
 import { InitializationStep } from "../BootManager"
 
 export const NotificationStep: InitializationStep = {

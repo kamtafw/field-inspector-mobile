@@ -17,7 +17,7 @@ export interface CreateConflictPayload {
 }
 
 class ConflictRepository {
-	private collection = database.get<Conflict>("conflicts")
+	collection = database.get<Conflict>("conflicts")
 
 	/** Create a conflict record */
 	async create(data: CreateConflictPayload): Promise<Conflict> {
@@ -90,7 +90,7 @@ class ConflictRepository {
 	/** Mark conflict as resolved */
 	async markResolved(
 		conflictId: string,
-		strategy: "keep_mine" | "keep_theirs" | "merge"
+		strategy: "keep_mine" | "keep_theirs" | "merge",
 	): Promise<void> {
 		const conflict = await this.collection.find(conflictId)
 

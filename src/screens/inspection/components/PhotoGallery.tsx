@@ -75,10 +75,6 @@ export default function PhotoGallery({ inspectionId, canEdit }: PhotoGalleryProp
 			})
 
 			await loadInspectionAndPhotos()
-
-			if (inspection?.remoteId) {
-				await PhotoUploadService.processQueue()
-			}
 		} catch (err: any) {
 			console.error("Failed to take photo:", err)
 			Alert.alert("Error", err.message || "Failed to take photo")
@@ -100,10 +96,6 @@ export default function PhotoGallery({ inspectionId, canEdit }: PhotoGalleryProp
 			})
 
 			await loadInspectionAndPhotos()
-
-			if (inspection?.remoteId) {
-				await PhotoUploadService.processQueue()
-			}
 		} catch (err: any) {
 			console.error("Failed to pick photo:", err)
 			Alert.alert("Error", err.message || "Failed to pick photo")

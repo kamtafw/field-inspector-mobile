@@ -1,9 +1,7 @@
-// WatermelonDB schema definition
-
 import { appSchema, tableSchema } from "@nozbe/watermelondb"
 
 export default appSchema({
-	version: 9,
+	version: 11,
 	tables: [
 		tableSchema({
 			name: "users",
@@ -31,7 +29,7 @@ export default appSchema({
 		tableSchema({
 			name: "inspections",
 			columns: [
-				{ name: "remote_id", type: "string", isOptional: true }, // null until synced
+				{ name: "remote_id", type: "string", isOptional: true },
 				{ name: "template_id", type: "string", isIndexed: true },
 				{ name: "facility_name", type: "string" },
 				{ name: "facility_address", type: "string" },

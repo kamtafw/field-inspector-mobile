@@ -58,9 +58,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		const data = await AuthService.login(credentials)
 		setIsAuthenticated(true)
 		setUserId(data.user.id)
-
-		// resume sync after login
-		await SyncEngine.processQueue()
 	}
 
 	const logout = async () => {

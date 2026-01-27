@@ -60,7 +60,7 @@ export interface ConflictResponse {
 export interface InspectionTemplateDTO {
 	id: string
 	name: string
-	version: string
+	version: number
 	checklist_items: ChecklistItemsDTO[]
 	created_at: string
 }
@@ -118,7 +118,7 @@ class InspectionsAPI {
 	async update(
 		id: string,
 		data: UpdateInspectionDTO,
-		idempotencyKey: string
+		idempotencyKey: string,
 	): Promise<InspectionResponseDTO> {
 		try {
 			const response = await api.put<InspectionResponseDTO>(`/inspections/${id}/`, data, {
@@ -161,7 +161,7 @@ class InspectionsAPI {
 	 */
 	async getAll(
 		page: number = 1,
-		pageSize: number = 50
+		pageSize: number = 50,
 	): Promise<PaginatedResponse<InspectionResponseDTO>> {
 		try {
 			const response = await api.get<PaginatedResponse<InspectionResponseDTO>>(`/inspections/`, {
@@ -213,7 +213,7 @@ class InspectionsAPI {
 			operation_type: "CREATE_INSPECTION" | "UPDATE_INSPECTION"
 			idempotency_key: string
 			data: CreateInspectionDTO | UpdateInspectionDTO
-		}>
+		}>,
 	): Promise<
 		Array<{
 			success: boolean

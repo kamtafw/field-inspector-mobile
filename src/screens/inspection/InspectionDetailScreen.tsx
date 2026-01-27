@@ -105,7 +105,7 @@ export default function InspectionDetailScreen() {
 						}
 					},
 				},
-			]
+			],
 		)
 	}
 
@@ -130,7 +130,7 @@ export default function InspectionDetailScreen() {
 						}
 					},
 				},
-			]
+			],
 		)
 	}
 
@@ -335,7 +335,7 @@ export default function InspectionDetailScreen() {
 													"flex-1 p-3 rounded-lg border-2",
 													response.value === option
 														? "bg-[#007aff] border-[#007aff]"
-														: "bg-white border-[#e0e0e0]"
+														: "bg-white border-[#e0e0e0]",
 												)}
 												onPress={() => handleChecklistResponse(itemId, option)}
 												disabled={!canEdit}
@@ -343,7 +343,7 @@ export default function InspectionDetailScreen() {
 												<Text
 													className={clsx(
 														"text-center font-semibold",
-														response.value === option ? "text-white" : "text-[#666]"
+														response.value === option ? "text-white" : "text-[#666]",
 													)}
 												>
 													{option}
@@ -359,8 +359,8 @@ export default function InspectionDetailScreen() {
 												response.value === "pass"
 													? "bg-[#e8f8ec]"
 													: response.value === "fail"
-													? "bg-[#ffebee]"
-													: "bg-[#f0f0f0]"
+														? "bg-[#ffebee]"
+														: "bg-[#f0f0f0]",
 											)}
 										>
 											<Text
@@ -369,8 +369,8 @@ export default function InspectionDetailScreen() {
 													response.value.toLowerCase() === "pass"
 														? "text-[#34c759]"
 														: response.value.toLowerCase() === "fail"
-														? "text-[#ff3b30]"
-														: "text-[#666]"
+															? "text-[#ff3b30]"
+															: "text-[#666]",
 												)}
 											>
 												{response.value}
@@ -420,7 +420,7 @@ export default function InspectionDetailScreen() {
 							<TouchableOpacity
 								className={clsx(
 									"flex-1 p-4 rounded-lg items-center",
-									isSaving ? "bg-[#999]" : "bg-[#007aff]"
+									isSaving ? "bg-[#999]" : "bg-[#007aff]",
 								)}
 								onPress={handleSave}
 								disabled={isSaving}
@@ -438,7 +438,7 @@ export default function InspectionDetailScreen() {
 						<TouchableOpacity
 							className={clsx(
 								"p-4 rounded-lg items-center mb-3",
-								isSubmitting ? "bg-[#999]" : "bg-[#34c759]"
+								isSubmitting ? "bg-[#999]" : "bg-[#34c759]",
 							)}
 							onPress={handleSubmit}
 							disabled={isSubmitting}

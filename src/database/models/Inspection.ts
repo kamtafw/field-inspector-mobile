@@ -1,5 +1,5 @@
 import { Model } from "@nozbe/watermelondb"
-import { field, text, date, readonly, json } from "@nozbe/watermelondb/decorators"
+import { field, text, json } from "@nozbe/watermelondb/decorators"
 
 export interface InspectionResponse {
 	[itemId: string]: {

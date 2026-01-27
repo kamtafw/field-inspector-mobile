@@ -1,5 +1,3 @@
-// Orchestrates all initialization steps
-
 export type BootStep = "database" | "auth" | "network" | "sync" | "notifications" | "analytics"
 
 export interface BootStepResult {
@@ -11,9 +9,16 @@ export interface BootStepResult {
 
 export interface InitializationStep {
 	name: BootStep
-	required: boolean // if false, failure won't stop boot
+	required: boolean
 	execute: () => Promise<void>
-	rollback?: () => Promise<void> // cleanup on failure
+	validateEnvironment: () => Promise<void>
+	validateDatabase: (db: any) => Promise<void>
+	attemptRecovery?: (error: any) => Promise<boolean>
+	handleMigrationFailure?: () => Promise<boolean>
+	handleCorruption?: () => Promise<boolean>
+	handlePermissionIssue?: () => Promise<boolean>
+	rollback?: () => Promise<void>
+	reset?: () => Promise<boolean>
 }
 
 class BootManager {

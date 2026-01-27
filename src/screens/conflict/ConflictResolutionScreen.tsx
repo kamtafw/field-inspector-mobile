@@ -85,7 +85,7 @@ export default function ConflictResolutionScreen() {
 			const analysis = ConflictResolver.analyzeConflict(
 				recentConflict.clientData,
 				recentConflict.serverData,
-				recentConflict.conflictFields
+				recentConflict.conflictFields,
 			)
 
 			setStrategy(analysis.suggestedStrategy)
@@ -211,8 +211,6 @@ export default function ConflictResolutionScreen() {
 			// mark conflict as resolved
 			await ConflictRepository.markResolved(conflict.id, strategy)
 
-			await SyncEngine.processQueue()
-
 			Alert.alert("Conflict Resolved", "Your changes have been saved and will sync when online.", [
 				{
 					text: "OK",
@@ -232,7 +230,7 @@ export default function ConflictResolutionScreen() {
 		label: string,
 		clientValue: any,
 		serverValue: any,
-		isConflict: boolean
+		isConflict: boolean,
 	) => {
 		const currentSelection = fieldSelections[fieldName] || "server"
 		const isMergeMode = strategy === "merge"
@@ -256,10 +254,10 @@ export default function ConflictResolutionScreen() {
 							strategy === "keep_mine"
 								? stateStyles.strategy
 								: isMergeMode && currentSelection === "client"
-								? stateStyles.merge
-								: isConflict
-								? stateStyles.conflict
-								: stateStyles.default
+									? stateStyles.merge
+									: isConflict
+										? stateStyles.conflict
+										: stateStyles.default,
 						)}
 						onPress={() => {
 							if (isMergeMode && isConflict) {
@@ -284,10 +282,10 @@ export default function ConflictResolutionScreen() {
 							strategy === "keep_theirs"
 								? stateStyles.strategy
 								: isMergeMode && currentSelection === "server"
-								? stateStyles.merge
-								: isConflict
-								? stateStyles.conflict
-								: stateStyles.default
+									? stateStyles.merge
+									: isConflict
+										? stateStyles.conflict
+										: stateStyles.default,
 						)}
 						onPress={() => {
 							if (isMergeMode && isConflict) {
@@ -398,14 +396,14 @@ export default function ConflictResolutionScreen() {
 							"border-2 rounded-xl p-4 mb-3",
 							strategy === "keep_mine"
 								? "bg-[#e3f2fd] border-[#007aff]"
-								: "bg-[#f9f9f9] border-[#e0e0e0]"
+								: "bg-[#f9f9f9] border-[#e0e0e0]",
 						)}
 						onPress={() => setStrategy("keep_mine")}
 					>
 						<Text
 							className={clsx(
 								"text-base font-semibold mb-1",
-								strategy === "keep_mine" ? "text-[#007aff]" : "text-[#1a1a1a]"
+								strategy === "keep_mine" ? "text-[#007aff]" : "text-[#1a1a1a]",
 							)}
 						>
 							Keep My Changes
@@ -418,14 +416,14 @@ export default function ConflictResolutionScreen() {
 							"border-2 rounded-xl p-4 mb-3",
 							strategy === "keep_theirs"
 								? "bg-[#e3f2fd] border-[#007aff]"
-								: "bg-[#f9f9f9] border-[#e0e0e0]"
+								: "bg-[#f9f9f9] border-[#e0e0e0]",
 						)}
 						onPress={() => setStrategy("keep_theirs")}
 					>
 						<Text
 							className={clsx(
 								"text-base font-semibold mb-1",
-								strategy === "keep_theirs" ? "text-[#007aff]" : "text-[#1a1a1a]"
+								strategy === "keep_theirs" ? "text-[#007aff]" : "text-[#1a1a1a]",
 							)}
 						>
 							Keep Server Changes
@@ -438,14 +436,14 @@ export default function ConflictResolutionScreen() {
 							"border-2 rounded-xl p-4 mb-3",
 							strategy === "merge"
 								? "bg-[#e3f2fd] border-[#007aff]"
-								: "bg-[#f9f9f9] border-[#e0e0e0]"
+								: "bg-[#f9f9f9] border-[#e0e0e0]",
 						)}
 						onPress={() => setStrategy("merge")}
 					>
 						<Text
 							className={clsx(
 								"text-base font-semibold mb-1",
-								strategy === "merge" ? "text-[#007aff]" : "text-[#1a1a1a]"
+								strategy === "merge" ? "text-[#007aff]" : "text-[#1a1a1a]",
 							)}
 						>
 							Merge Both (Review Required)
@@ -464,7 +462,7 @@ export default function ConflictResolutionScreen() {
 						"Facility Name",
 						conflict.clientData.facilityName,
 						conflict.serverData.facilityName,
-						conflict.conflictFields.includes("facility_name")
+						conflict.conflictFields.includes("facility_name"),
 					)}
 
 					<View className="border-b border-[#e0e0e0] mb-3" />
@@ -475,7 +473,7 @@ export default function ConflictResolutionScreen() {
 						"Facility Address",
 						conflict.clientData.facilityAddress,
 						conflict.serverData.facilityAddress,
-						conflict.conflictFields.includes("facility_address")
+						conflict.conflictFields.includes("facility_address"),
 					)}
 
 					<View className="border-b border-[#e0e0e0] mb-3" />
@@ -486,7 +484,7 @@ export default function ConflictResolutionScreen() {
 						"Status",
 						conflict.clientData.status,
 						conflict.serverData.status,
-						conflict.conflictFields.includes("status")
+						conflict.conflictFields.includes("status"),
 					)}
 
 					{/* Checklist items with conflicts */}
@@ -502,7 +500,7 @@ export default function ConflictResolutionScreen() {
 										`Checklist Item: ${itemId}`,
 										conflictItem.clientValue?.value,
 										conflictItem.serverValue?.value,
-										true
+										true,
 									)}
 								</View>
 							)

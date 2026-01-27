@@ -135,6 +135,11 @@ class InspectionRepository {
 		return updated
 	}
 
+	/** Submit inspection and trigger immediate sync */
+	async submitInspection(inspectionId: string): Promise<void> {
+		await this.update(inspectionId, { status: "submitted" })
+	}
+
 	/** Mark inspection as conflicted */
 	async markConflict(inspectionId: string): Promise<void> {
 		const inspection = await this.getById(inspectionId)
@@ -205,20 +210,20 @@ class InspectionRepository {
 	/** Queue a sync operation */
 	private async queueSyncOperation(
 		inspection: Inspection,
-		operationType: "CREATE_INSPECTION" | "UPDATE_INSPECTION"
+		operationType: "CREATE_INSPECTION" | "UPDATE_INSPECTION",
 	): Promise<void> {
 		// check pending/in_progress operation for this inspection
 		const existingOps = await this.syncCollection
 			.query(
 				Q.where("entity_id", inspection.id),
-				Q.where("status", Q.oneOf(["pending", "in_progress", "failed"]))
+				Q.where("status", Q.oneOf(["pending", "in_progress", "failed"])),
 			)
 			.fetch()
 
 		if (existingOps.length > 0) {
 			console.log(
 				`⚠️ Sync operation already exists for inspection ${inspection.id}, ` +
-					`updating existing operation instead of creating new one`
+					`updating existing operation instead of creating new one`,
 			)
 
 			// update existing operation instead of creating new one (avoid crash)

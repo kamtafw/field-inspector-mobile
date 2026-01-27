@@ -3,7 +3,7 @@ import BootManager, { BootStep, BootStepResult } from "../services/boot/BootMana
 import { DatabaseStep } from "../services/boot/steps/DatabaseStep"
 import { AuthStep } from "../services/boot/steps/AuthStep"
 import { NetworkStep } from "../services/boot/steps/NetworkStep"
-import { SyncStep } from "../services/boot/steps/SyncStep"
+import { AutoSyncStep } from "../services/boot/steps/AutoSyncStep"
 import { NotificationStep } from "../services/boot/steps/NotificationStep"
 import { AnalyticsStep } from "../services/boot/steps/AnalyticsStep"
 import BootLoadingScreen from "../components/boot/BootLoadingScreen"
@@ -48,7 +48,7 @@ export function BootProvider({ children }: { children: React.ReactNode }) {
 			BootManager.registerStep(DatabaseStep)
 			BootManager.registerStep(AuthStep)
 			BootManager.registerStep(NetworkStep)
-			BootManager.registerStep(SyncStep)
+			BootManager.registerStep(AutoSyncStep)
 			BootManager.registerStep(NotificationStep)
 			BootManager.registerStep(AnalyticsStep)
 

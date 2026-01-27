@@ -1,14 +1,17 @@
 import { Text, TouchableOpacity, View } from "react-native"
-import Inspection from "@/src/database/models/Inspection"
+import { useNavigation } from "@react-navigation/native"
+import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { withObservables } from "@nozbe/watermelondb/react"
+import Inspection from "@/src/database/models/Inspection"
+import { MainStackParamList } from "@/src/navigation/types"
 import InspectionsAPI from "@/src/services/api/inspections.api"
 import InspectionRepository from "@/src/database/repositories/InspectionRepository"
-import SyncEngine from "@/src/services/sync/SyncEngine"
-import { useNavigation } from "@react-navigation/native"
 
 interface InspectionProp {
 	inspection: Inspection
 }
+
+type NavigationProp = NativeStackNavigationProp<MainStackParamList>
 
 function StatusBadge({ status }: { status: string }) {
 	const getBadgeStyle = () => {
@@ -36,7 +39,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function InspectionCard({ inspection }: InspectionProp) {
-	const navigation = useNavigation()
+	const navigation = useNavigation<NavigationProp>()
 
 	const handlePress = () => {
 		if (inspection.status === "conflict") {
@@ -56,7 +59,7 @@ function InspectionCard({ inspection }: InspectionProp) {
 				status: "draft",
 				version: inspection.version,
 			},
-			"e0df5cf5-f17e-4118-8b41-ba9c8528afe8"
+			"e0df5cf5-f17e-4118-8b41-ba9c8528afe8",
 		)
 
 		await InspectionRepository.markSynced(inspection.id, response.id, response.version)
@@ -68,8 +71,6 @@ function InspectionCard({ inspection }: InspectionProp) {
 			facilityAddress: "Conflict Address",
 			status: "submitted",
 		})
-
-		SyncEngine.processQueue()
 	}
 
 	const formattedDate = new Date(inspection.createdTs).toLocaleDateString("en-US", {
