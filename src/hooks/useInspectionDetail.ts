@@ -37,10 +37,15 @@ export default function useInspectionDetail(inspectionId: string): UseInspection
 
 				setInspection(inspectionRecord)
 
-				// observe changes (WatermelonDB auto-updates when record changes)
-				subscription = inspectionRecord.observe().subscribe((updated) => {
-					console.log("🔄 Inspection updated:", updated.id, updated.status)
-					setInspection(updated)
+				subscription = inspectionRecord.observe().subscribe({
+					next: (updated) => {
+						console.log("🔄 Inspection updated:", updated.id, updated.status)
+						setInspection(updated)
+					},
+					error: (err) => {
+						console.error("Error observing inspection:", err)
+						setError(err.message)
+					},
 				})
 			} catch (err: any) {
 				console.error("Failed to load inspection:", err)
