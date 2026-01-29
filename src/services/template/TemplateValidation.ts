@@ -19,6 +19,7 @@ class TemplateValidationService {
 		valid: boolean
 		template?: InspectionTemplate
 		error?: string
+		isDeleted?: boolean
 	}> {
 		// check cache first
 		const cached = this.templateCache.get(templateId)
@@ -53,7 +54,8 @@ class TemplateValidationService {
 				if (err.response?.status === 404) {
 					return {
 						valid: false,
-						error: "Template not found. It may have been deleted.",
+						error: "This template is no longer available.",
+						isDeleted: true,
 					}
 				}
 

@@ -1,13 +1,15 @@
+import * as SecureStore from "expo-secure-store"
 import NetInfo from "@react-native-community/netinfo"
-import ConflictDetector from "./ConflictDetector"
 import SyncOperation from "@/src/database/models/SyncOperation"
 import InspectionsAPI, { ConflictResponse } from "../api/inspections.api"
+import ConflictDetector from "./ConflictDetector"
 import ConflictRepository from "@/src/database/repositories/ConflictRepository"
 import InspectionRepository from "@/src/database/repositories/InspectionRepository"
 import SyncRepository from "@/src/database/repositories/SyncRepository"
 import PhotoUploadService from "../photo/PhotoUploadService"
 import ErrorAlert from "@/src/components/ui/ErrorAlert"
 import { NetworkResilience } from "../network/NetworkResilience"
+import { Alert } from "react-native"
 
 export type SyncStatus = "idle" | "syncing" | "error"
 
@@ -16,11 +18,14 @@ export interface SyncStats {
 	inProgress: number
 	failed: number
 	completed: number
+	syncedCount?: number
+	totalToSync?: number
 }
 
 class SyncEngine {
 	private isProcessing = false
 	private status: SyncStatus = "idle"
+	private syncProgress = { completed: 0, total: 0 }
 	private listeners: Array<(status: SyncStatus, stats?: SyncStats) => void> = []
 	private retryTimeoutId?: NodeJS.Timeout
 	private networkUnsubscribe?: () => void
@@ -72,22 +77,17 @@ class SyncEngine {
 		this.updateStatus("syncing")
 
 		try {
-			console.log("🔄 SyncEngine: Starting to process queue...")
-
-			// get all pending operations
 			const operations = await SyncRepository.getPendingOperations()
 
 			if (operations.length === 0) {
-				console.log("✅ No pending operations")
 				this.updateStatus("idle")
 				return
 			}
 
-			if (operations.length >= 3) {
-				await this.processBatch(operations)
-			} else {
-				await this.processIndividual(operations)
-			}
+			this.syncProgress = { completed: 0, total: operations.length }
+			this.notifyListeners(this.status, await this.getStats())
+
+			await this.processIndividual(operations)
 
 			this.updateStatus("idle")
 
@@ -145,20 +145,16 @@ class SyncEngine {
 
 	/** Process operations individually - for small batches (1-2 operations) */
 	private async processIndividual(operations: SyncOperation[]): Promise<void> {
-		let successCount = 0
-		let failCount = 0
-
 		for (const operation of operations) {
-			try {
-				await this.processOperation(operation)
-				successCount++
-			} catch (err: any) {
-				console.error(`❌ Operation ${operation.id} failed:`, err.message)
-				failCount++
-			}
+			await this.processOperation(operation)
+
+			this.syncProgress.completed++
+			this.notifyListeners(this.status, await this.getStats())
 		}
 
-		console.log(`✅ Individual sync: ${successCount} succeeded, ${failCount} failed`)
+		if (this.syncProgress.completed > 0) {
+			await SecureStore.setItemAsync("lastSyncTimestamp", Date.now().toString())
+		}
 	}
 
 	/** Process operations in batch - for larger batches (3+ operations) */
@@ -247,6 +243,11 @@ class SyncEngine {
 	async processOperation(operation: SyncOperation): Promise<void> {
 		console.log(`🔄 Processing operation: ${operation.operationType} (${operation.id})`)
 
+		let rollbackData: any = null
+		if (operation.operationType === "UPDATE_INSPECTION") {
+			rollbackData = await InspectionRepository.createRollbackPoint(operation.entityId)
+		}
+
 		await SyncRepository.markInProgress(operation.id)
 
 		try {
@@ -269,20 +270,30 @@ class SyncEngine {
 		} catch (err: any) {
 			console.error(`❌ Operation failed: ${operation.id}`, err)
 
-			// check if it's a conflict (409)
+			if (err.response?.status !== 409 && rollbackData) {
+				await InspectionRepository.rollbackInspection(operation.entityId, rollbackData)
+
+				Alert.alert(
+					"Sync Failed",
+					"Your changes couldn't be synced. We've restored the previous version.",
+					[{ text: "OK" }],
+				)
+			}
+
+			// handle conflict (409)
 			if (err.response?.status === 409) {
-				console.log("⚠️ 409 Conflict detected, handling...")
 				await this.handleConflict(operation, err.response.data)
 				return
 			}
 
-			// check retry limit
 			if (operation.retryCount >= operation.maxRetries) {
-				await SyncRepository.markFailed(operation.id, "Max retries exceeded")
+				await InspectionRepository.markSyncError(
+					operation.entityId,
+					"Sync failed after maximum retries. Your changes are saved locally.",
+				)
 				return
 			}
 
-			// mark other errors as failed and schedule a retry
 			await SyncRepository.markFailed(operation.id, err.message)
 			throw err
 		}
@@ -392,7 +403,12 @@ class SyncEngine {
 
 	/** Get sync stats */
 	async getStats(): Promise<SyncStats> {
-		return await SyncRepository.getQueueStats()
+		const baseStats = await SyncRepository.getQueueStats()
+		return {
+			...baseStats,
+			syncedCount: this.syncProgress.completed,
+			totalToSync: this.syncProgress.total,
+		}
 	}
 
 	/** Get current sync status */

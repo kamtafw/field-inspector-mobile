@@ -288,6 +288,37 @@ class InspectionRepository {
 
 		return { total, synced, pending, conflicts }
 	}
+
+	async createRollbackPoint(inspectionId: string): Promise<any> {
+		const inspection = await this.getById(inspectionId)
+
+		return {
+			id: inspection?.id,
+			facilityName: inspection?.facilityName,
+			facilityAddress: inspection?.facilityAddress,
+			responses: JSON.parse(JSON.stringify(inspection?.responses)),
+			status: inspection?.status,
+			version: inspection?.version,
+		}
+	}
+
+	async rollbackInspection(inspectionId: string, rollbackData: any): Promise<void> {
+		const inspection = await this.getById(inspectionId)
+		if (!inspection) return
+
+		await database.write(async () => {
+			await inspection.update((record) => {
+				record.facilityName = rollbackData.facilityName
+				record.facilityAddress = rollbackData.facilityAddress
+				record.responses = rollbackData.responses
+				record.status = rollbackData.status
+				record.version = rollbackData.version
+				record.isSynced = false
+			})
+		})
+
+		console.log(`⏮️ Rolled back inspection ${inspectionId} to previous state`)
+	}
 }
 
 export default new InspectionRepository()

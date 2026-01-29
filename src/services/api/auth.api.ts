@@ -98,20 +98,15 @@ class AuthAPI {
 
 	/** Logout user and clear tokens */
 	async logout(): Promise<void> {
-		try {
-			const refreshToken = await SecureStore.getItemAsync("refreshToken")
-			if (refreshToken) {
-				await api.post("/auth/logout/", { refresh: refreshToken })
-			}
-		} catch (error) {
-			// ignore logout errors & proceed to clear tokens
-			console.error("Logout error:", error)
-		} finally {
-			await SecureStore.deleteItemAsync("accessToken")
-			await SecureStore.deleteItemAsync("refreshToken")
-			await SecureStore.deleteItemAsync("user")
-			await SecureStore.deleteItemAsync("userId")
+		const refreshToken = await SecureStore.getItemAsync("refreshToken")
+		if (refreshToken) {
+			await api.post("/auth/logout/", { refresh: refreshToken })
 		}
+
+		await SecureStore.deleteItemAsync("accessToken")
+		await SecureStore.deleteItemAsync("refreshToken")
+		await SecureStore.deleteItemAsync("user")
+		await SecureStore.deleteItemAsync("userId")
 	}
 
 	/** Get stored user info */

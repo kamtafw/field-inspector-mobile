@@ -2,11 +2,7 @@ import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from "ax
 import * as SecureStore from "expo-secure-store"
 import { API_BASE_URL } from "../../config"
 import { TIMEOUT_DURATION } from "@/src/config/constants"
-
-interface TokenPair {
-	accessToken: string
-	refreshToken: string
-}
+import NetInfo from "@react-native-community/netinfo"
 
 interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
 	_retry?: boolean
@@ -64,7 +60,7 @@ api.interceptors.request.use(
 	(error) => {
 		console.error("Request interceptor error:", error)
 		return Promise.reject(error)
-	}
+	},
 )
 
 /** Response Interceptor */
@@ -88,6 +84,22 @@ api.interceptors.response.use(
 		// handle 401 unauthorized
 		if (error.response.status === 401 && originalRequest && !originalRequest._retry) {
 			console.log("🔄 401 detected, attempting token refresh...")
+
+			const netState = await NetInfo.fetch()
+
+			if (!netState.isConnected) {
+				console.log("⚠️ Token expired while offline - allowing offline mode")
+
+				// store flag that token needs refresh when online
+				await SecureStore.setItemAsync("needsTokenRefresh", "true")
+
+				// allow request to fail gracefully without logout
+				return Promise.reject({
+					message: "You're offline. Your work is saved locally.",
+					isOfflineAuthError: true,
+					shouldAllowOfflineWork: true,
+				})
+			}
 
 			// mark request as retried
 			originalRequest._retry = true
@@ -118,7 +130,7 @@ api.interceptors.response.use(
 				const response = await axios.post(
 					`${API_BASE_URL}/auth/refresh/`,
 					{ refresh: refreshToken },
-					{ timeout: TIMEOUT_DURATION }
+					{ timeout: TIMEOUT_DURATION },
 				)
 
 				const newAccessToken = response.data.access
@@ -168,7 +180,7 @@ api.interceptors.response.use(
 		})
 
 		return Promise.reject(error)
-	}
+	},
 )
 
 /** event listeners for logout */

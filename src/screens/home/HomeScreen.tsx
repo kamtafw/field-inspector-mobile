@@ -1,13 +1,5 @@
 import { useState } from "react"
-import {
-	View,
-	Text,
-	TouchableOpacity,
-	ActivityIndicator,
-	Platform,
-	FlatList,
-	RefreshControl,
-} from "react-native"
+import { View, Text, TouchableOpacity, Platform, FlatList, RefreshControl } from "react-native"
 import clsx from "clsx"
 import { Feather } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
@@ -23,15 +15,15 @@ import { InspectionListSkeleton } from "@/src/components/ui/SkeletonLoader"
 import SyncStatusBar from "@/src/components/features/SyncStatusBar"
 import NetworkStatusIndicator from "@/src/components/features/NetworkStatusIndicator"
 import AutoSyncService from "@/src/services/sync/AutoSyncService"
+import PhotoUploadQueue from "@/src/components/features/PhotoUploadQueue"
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<MainStackParamList, "Home">
 
 export default function HomeScreen() {
-	const { userId, logout } = useAuth()
+	const { userId } = useAuth()
 	const { inspections, isLoading, error } = useInspections()
 	const navigation = useNavigation<HomeScreenNavigationProp>()
 
-	const [isLoggingOut, setIsLoggingOut] = useState(false)
 	const [refreshing, setRefreshing] = useState(false)
 
 	const onRefresh = async () => {
@@ -42,17 +34,6 @@ export default function HomeScreen() {
 			console.error("Refresh sync failed:", err)
 		} finally {
 			setRefreshing(false)
-		}
-	}
-
-	const handleLogout = async () => {
-		setIsLoggingOut(true)
-		try {
-			await logout()
-		} catch (err) {
-			console.error("Logout failed:", err)
-		} finally {
-			setIsLoggingOut(false)
 		}
 	}
 
@@ -128,6 +109,8 @@ export default function HomeScreen() {
 				`${inspections.length} ${inspections.length === 1 ? "Inspection" : "Inspections"}`,
 				"default",
 			)}
+
+			<PhotoUploadQueue />
 
 			{/* Inspection List */}
 			<FlatList

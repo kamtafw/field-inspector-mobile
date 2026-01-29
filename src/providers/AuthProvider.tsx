@@ -1,10 +1,13 @@
 import React, { createContext, useContext, useEffect, useState } from "react"
-import { LoginCredentials, SignupCredentials } from "../services/api/auth.api"
-import AuthService from "../services/auth/AuthService"
-import { getRestoredAuth } from "../services/boot/steps/AuthStep"
-import { onLogout } from "../services/api/client"
 import { Alert } from "react-native"
+import * as SecureStore from "expo-secure-store"
+
+import { onLogout } from "../services/api/client"
+import { getRestoredAuth } from "../services/boot/steps/AuthStep"
+import AuthService from "../services/auth/AuthService"
 import AutoSyncService from "../services/sync/AutoSyncService"
+import NetworkMonitor from "../services/network/NetworkMonitor"
+import AuthAPI, { LoginCredentials, SignupCredentials } from "../services/api/auth.api"
 
 interface AuthContextValue {
 	isAuthenticated: boolean
@@ -13,7 +16,7 @@ interface AuthContextValue {
 	userName: string | null
 	signup: (credentials: SignupCredentials) => Promise<void>
 	login: (credentials: LoginCredentials) => Promise<void>
-	logout: () => Promise<void>
+	logout: (clearLocalData: boolean) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -68,6 +71,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		return unsubscribe
 	}, [])
 
+	NetworkMonitor.addListener(async (status) => {
+		if (status === "online") {
+			const needsRefresh = await SecureStore.getItemAsync("needsTokenRefresh")
+			if (needsRefresh === "true") {
+				try {
+					const refreshToken = await SecureStore.getItemAsync("refreshToken")
+					await AuthAPI.refreshToken(refreshToken!)
+					await SecureStore.deleteItemAsync("needsTokenRefresh")
+				} catch {
+					Alert.alert("Session Expired", "Please log in again to sync your work", [
+						{ text: "Log In", onPress: () => logout(false) },
+					])
+				}
+			}
+		}
+	})
+
 	const signup = async (credentials: SignupCredentials) => {
 		const user = await AuthService.signup(credentials)
 
@@ -90,8 +110,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		await AutoSyncService.syncNow()
 	}
 
-	const logout = async () => {
-		await AuthService.logout()
+	const logout = async (clearLocalData: boolean = true) => {
+		await AuthService.logout(clearLocalData)
 
 		setIsAuthenticated(false)
 		setUserId(null)

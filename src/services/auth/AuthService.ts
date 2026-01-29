@@ -1,7 +1,8 @@
-import { usersCollection } from "@/src/database/collections"
+import * as SecureStore from "expo-secure-store"
 import AuthAPI, { SignupCredentials, LoginCredentials, MappedUser } from "../api/auth.api"
 import UserRepository from "@/src/database/repositories/UserRepository"
 import User from "@/src/database/models/User"
+import database from "@/src/database"
 
 class AuthService {
 	async signup(credentials: SignupCredentials) {
@@ -22,12 +23,16 @@ class AuthService {
 	}
 
 	// logout user and clear local data
-	async logout() {
-		const user = await AuthAPI.getCurrentUser()
+	async logout(clearLocalData: boolean = true) {
 		await AuthAPI.logout()
 
-		if (user) {
-			await UserRepository.delete(user.id)
+		if (!clearLocalData) {
+			await SecureStore.deleteItemAsync("accessToken")
+			await SecureStore.deleteItemAsync("refreshToken")
+		} else {
+			await database.write(async () => {
+				await database.unsafeResetDatabase()
+			})
 		}
 	}
 

@@ -1,5 +1,5 @@
 import useInspections from "@/src/hooks/useInspections"
-import SyncEngine from "@/src/services/sync/SyncEngine"
+import TemplateValidation from "@/src/services/template/TemplateValidation"
 import { useNavigation } from "@react-navigation/native"
 import clsx from "clsx"
 import { useState } from "react"
@@ -69,6 +69,17 @@ export default function CreateInspectionScreen() {
 				responses,
 			}
 
+			const { isDeleted } = await TemplateValidation.validateTemplate(data.templateId)
+
+			if (isDeleted) {
+				Alert.alert(
+					"Template Unavailable",
+					"This inspection template is no longer available. Please contact support.",
+					[{ text: "OK", onPress: () => navigation.goBack() }],
+				)
+				return
+			}
+
 			await createInspection(data)
 
 			Alert.alert("Success", "Draft saved locally", [
@@ -110,6 +121,17 @@ export default function CreateInspectionScreen() {
 				facilityName,
 				facilityAddress,
 				responses,
+			}
+
+			const { isDeleted } = await TemplateValidation.validateTemplate(data.templateId)
+
+			if (isDeleted) {
+				Alert.alert(
+					"Template Unavailable",
+					"This inspection template is no longer available. Please contact support.",
+					[{ text: "OK", onPress: () => navigation.goBack() }],
+				)
+				return
 			}
 
 			const inspection = await createInspection(data)
