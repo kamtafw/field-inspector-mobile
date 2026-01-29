@@ -7,6 +7,7 @@ export type RootStackParamList = {
 
 export type AuthStackParamList = {
 	Login: undefined
+	Signup: undefined
 }
 
 export type MainStackParamList = {
@@ -15,4 +16,5 @@ export type MainStackParamList = {
 	InspectionDetail: { id: string }
 	ConflictResolution: { inspectionId: string }
 	ConflictList: undefined
+	Profile: undefined
 }

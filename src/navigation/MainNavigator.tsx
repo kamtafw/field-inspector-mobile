@@ -7,6 +7,7 @@ import CreateInspectionScreen from "../screens/inspection/CreateInspectionScreen
 import ConflictListScreen from "../screens/conflict/ConflictListScreen"
 import ConflictResolutionScreen from "../screens/conflict/ConflictResolutionScreen"
 import InspectionDetailScreen from "../screens/inspection/InspectionDetailScreen"
+import ProfileScreen from "../screens/profile/ProfileScreen"
 
 const Stack = createNativeStackNavigator<MainStackParamList>()
 
@@ -19,6 +20,7 @@ export default function MainNavigator() {
 				component={CreateInspectionScreen}
 				options={{ presentation: "modal" }}
 			/>
+			<Stack.Screen name="Profile" component={ProfileScreen} />
 
 			<Stack.Screen name="ConflictList" component={ConflictListScreen} />
 			<Stack.Screen name="ConflictResolution" component={ConflictResolutionScreen} />

@@ -1,48 +1,47 @@
-// High-level auth service (combines API + local storage)
-
 import { usersCollection } from "@/src/database/collections"
-import AuthAPI, { LoginCredentials } from "../api/auth.api"
+import AuthAPI, { SignupCredentials, LoginCredentials, MappedUser } from "../api/auth.api"
+import UserRepository from "@/src/database/repositories/UserRepository"
+import User from "@/src/database/models/User"
 
 class AuthService {
+	async signup(credentials: SignupCredentials) {
+		const response = await AuthAPI.signup(credentials)
+
+		const user = await UserRepository.create(response.user)
+
+		return user
+	}
+
 	// Login user
 	async login(credentials: LoginCredentials) {
 		const response = await AuthAPI.login(credentials)
 
-		// TODO: store user in local DB for offline access
-		// await database.write(async () => {
-		// 	await usersCollection.create((user: any) => {
-		// 		user._raw.id = response.user.id // use server ID
-		// 		user.email = response.user.email
-		// 		user.name = response.user.name
-		// 		user.role = response.user.role
-		// 		user.lastSyncAt = Date.now()
-		// 	})
-		// })
+		const user = await UserRepository.create(response.user)
 
-		return response
+		return user
 	}
 
 	// logout user and clear local data
 	async logout() {
+		const user = await AuthAPI.getCurrentUser()
 		await AuthAPI.logout()
 
-		// TODO: select logout semantics
-		// 1. Soft logout (keep data, lock access
-		// 2. Nuclear logout (wipe everything)
-		// 3. Account-bound wipe (conditional)
+		if (user) {
+			await UserRepository.delete(user.id)
+		}
 	}
 
 	// get current user (from local DB if offline)
-	async getCurrentUser() {
+	async getCurrentUser(): Promise<User | MappedUser | null> {
 		try {
-			// try local DB first
-			const localUsers = await usersCollection.query().fetch()
+			const localUsers = await UserRepository.collection.query().fetch()
 
 			if (localUsers.length > 0) {
-				return localUsers.at(0)
+				return localUsers.at(0) || null
 			}
+
+			throw new Error()
 		} catch {
-			// fallback to SecureStore
 			return await AuthAPI.getCurrentUser()
 		}
 	}

@@ -9,14 +9,21 @@ import {
 	View,
 } from "react-native"
 import { clsx } from "clsx"
+import { useNavigation } from "@react-navigation/native"
 import { useAuth } from "@/src/providers/AuthProvider"
+import { NativeStackNavigationProp } from "@react-navigation/native-stack"
+import { AuthStackParamList } from "@/src/navigation/types"
+
+type NavigationProp = NativeStackNavigationProp<AuthStackParamList, "Login">
 
 export default function LoginScreen() {
-	const [email, setEmail] = useState(__DEV__ ? "admin@example.com" : "")
-	const [password, setPassword] = useState(__DEV__ ? "Year-2025" : "")
+	const navigation = useNavigation<NavigationProp>()
+	const { login } = useAuth()
+
+	const [email, setEmail] = useState("")
+	const [password, setPassword] = useState(__DEV__ ? "testpass123" : "")
 	const [isLoading, setIsLoading] = useState(false)
 	const [error, setError] = useState("")
-	const { login } = useAuth()
 
 	const handleLogin = async () => {
 		if (!email || !password) {
@@ -58,7 +65,7 @@ export default function LoginScreen() {
 							className="bg-white border border-neutral-50 rounded-lg p-4 text-base text-[#1a1a1a]"
 							value={email}
 							onChangeText={setEmail}
-							placeholder="you@example.com"
+							placeholder="firstname.lastname@vantage.com"
 							placeholderTextColor="#999"
 							autoCapitalize="none"
 							autoCorrect={false}
@@ -73,7 +80,7 @@ export default function LoginScreen() {
 							className="bg-white border border-neutral-50 rounded-lg p-4 text-base text-[#1a1a1a]"
 							value={password}
 							onChangeText={setPassword}
-							placeholder="Enter Password"
+							placeholder="Enter your password"
 							placeholderTextColor="#999"
 							secureTextEntry
 							editable={!isLoading}
@@ -91,7 +98,7 @@ export default function LoginScreen() {
 					<TouchableOpacity
 						className={clsx(
 							"bg-[#007aff] p-4 rounded-lg items-center mt-2",
-							isLoading && "opacity-60"
+							isLoading && "opacity-60",
 						)}
 						onPress={handleLogin}
 						disabled={isLoading}
@@ -104,10 +111,13 @@ export default function LoginScreen() {
 					</TouchableOpacity>
 				</View>
 
-				{/* Footer */}
-				<Text className="text-center text-[#999] text-xs mt-6">
-					Demo credentials: admin@example.com / Year-2025
-				</Text>
+				{/* Signup Link */}
+				<View className="flex-row justify-center items-center mt-6">
+					<Text className="text-sm text-[#666]">Don't have an account? </Text>
+					<TouchableOpacity onPress={() => navigation.navigate("Signup")} disabled={isLoading}>
+						<Text className="text-sm text-[#007aff] font-semibold">Sign Up</Text>
+					</TouchableOpacity>
+				</View>
 			</View>
 		</KeyboardAvoidingView>
 	)

@@ -23,18 +23,16 @@ import { InspectionListSkeleton } from "@/src/components/ui/SkeletonLoader"
 import SyncStatusBar from "@/src/components/features/SyncStatusBar"
 import NetworkStatusIndicator from "@/src/components/features/NetworkStatusIndicator"
 import AutoSyncService from "@/src/services/sync/AutoSyncService"
-import SyncDebugPanel from "@/src/components/debug/SyncDebugPanel"
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<MainStackParamList, "Home">
 
 export default function HomeScreen() {
-	const { logout } = useAuth()
+	const { userId, logout } = useAuth()
+	const { inspections, isLoading, error } = useInspections()
 	const navigation = useNavigation<HomeScreenNavigationProp>()
 
 	const [isLoggingOut, setIsLoggingOut] = useState(false)
 	const [refreshing, setRefreshing] = useState(false)
-
-	const { inspections, isLoading, error } = useInspections()
 
 	const onRefresh = async () => {
 		setRefreshing(true)
@@ -62,10 +60,35 @@ export default function HomeScreen() {
 		navigation.navigate("CreateInspection")
 	}
 
+	const renderHeader = (subtext: string, view: "loading" | "error" | "empty" | "default") => {
+		return (
+			<>
+				<NetworkStatusIndicator />
+				<View className="bg-white p-5 pt-14 border-b border-[#e0e0e0]">
+					<View className="flex-row justify-between items-center">
+						<View>
+							<Text className="text-3xl text-[#1a1a1a] font-bold">Inspections</Text>
+							<Text className="text-sm text-[#666] mt-1">{subtext}</Text>
+						</View>
+
+						<TouchableOpacity
+							className="w-10 h-10 bg-[#007aff] rounded-full items-center justify-center"
+							onPress={() => navigation.navigate("Profile")}
+						>
+							<Text className="text-white text-lg font-bold">{userId || "?"}</Text>
+						</TouchableOpacity>
+					</View>
+
+					{view === "default" && <SyncStatusBar />}
+				</View>
+			</>
+		)
+	}
+
 	if (isLoading && !inspections) {
 		return (
 			<SafeAreaView className="flex-1 bg-background">
-				<Header subtext="Loading Inspections..." view="loading" />
+				{renderHeader("Loading Inspections...", "loading")}
 
 				<InspectionListSkeleton />
 			</SafeAreaView>
@@ -75,7 +98,7 @@ export default function HomeScreen() {
 	if (error) {
 		return (
 			<SafeAreaView className="flex-1 bg-background">
-				<Header subtext="Error Loading Inspections" view="error" />
+				{renderHeader("Error Loading Inspections", "error")}
 
 				<EmptyState
 					icon="⚠️"
@@ -91,7 +114,7 @@ export default function HomeScreen() {
 	if (!inspections || inspections.length === 0) {
 		return (
 			<SafeAreaView className="flex-1 bg-background">
-				<Header subtext="No Inspections" view="empty" />
+				{renderHeader("No Inspections", "empty")}
 
 				<NoInspectionsEmpty onCreate={handleCreateNew} />
 			</SafeAreaView>
@@ -101,10 +124,10 @@ export default function HomeScreen() {
 	return (
 		<SafeAreaView className="flex-1 bg-background">
 			{/* Header w/ sync status */}
-			<Header
-				subtext={`${inspections.length} ${inspections.length === 1 ? "Inspection" : "Inspections"}`}
-				view="default"
-			/>
+			{renderHeader(
+				`${inspections.length} ${inspections.length === 1 ? "Inspection" : "Inspections"}`,
+				"default",
+			)}
 
 			{/* Inspection List */}
 			<FlatList
@@ -124,40 +147,8 @@ export default function HomeScreen() {
 				style={{ elevation: 6 }}
 				onPress={handleCreateNew}
 			>
-				<Feather name="plus" color="#FFF" size={20} />
-			</TouchableOpacity>
-
-			{/* Logout Button */}
-			<TouchableOpacity
-				className={clsx("bg-[#c42] m-6 p-4 rounded-lg items-center", isLoggingOut && "opacity-60")}
-				onPress={handleLogout}
-				disabled={isLoggingOut}
-			>
-				{isLoggingOut ? (
-					<ActivityIndicator color="#fff" />
-				) : (
-					<Text className="text-white text-base font-semibold">Log Out</Text>
-				)}
+				<Feather name="plus" color="#FFF" size={30} />
 			</TouchableOpacity>
 		</SafeAreaView>
-	)
-}
-
-interface HeaderProps {
-	subtext: string
-	view: "loading" | "error" | "empty" | "default"
-}
-function Header({ subtext, view = "loading" }: HeaderProps) {
-	return (
-		<>
-			<NetworkStatusIndicator />
-			<View className="bg-white p-5 pt-14 border-b border-[#e0e0e0]">
-				<View>
-					<Text className="text-3xl text-[#1a1a1a] font-bold">Inspections</Text>
-					<Text className="text-sm text-[#666] mt-1">{subtext}</Text>
-				</View>
-				{view === "default" && <SyncStatusBar />}
-			</View>
-		</>
 	)
 }

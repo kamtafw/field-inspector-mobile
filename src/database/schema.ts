@@ -1,16 +1,16 @@
 import { appSchema, tableSchema } from "@nozbe/watermelondb"
 
 export default appSchema({
-	version: 11,
+	version: 12,
 	tables: [
 		tableSchema({
 			name: "users",
 			columns: [
 				{ name: "email", type: "string", isIndexed: true },
-				{ name: "name", type: "string" },
-				{ name: "role", type: "string" }, // 'inspector' | 'manager'
-				{ name: "last_sync_ts", type: "number", isOptional: true },
-				{ name: "created_ts", type: "number" },
+				{ name: "first_name", type: "string" },
+				{ name: "last_name", type: "string" },
+				{ name: "role", type: "string" },
+				{ name: "login_ts", type: "number" },
 			],
 		}),
 

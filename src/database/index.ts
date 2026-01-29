@@ -1,15 +1,14 @@
-// Database initialization & export
-
 import { Database } from "@nozbe/watermelondb"
 import SQLiteAdapter from "@nozbe/watermelondb/adapters/sqlite"
 import schema from "./schema"
 import migrations from "./migrations"
 
 import InspectionTemplate from "./models/InspectionTemplate"
-import Inspection from "./models/Inspection"
 import SyncOperation from "./models/SyncOperation"
+import Inspection from "./models/Inspection"
 import Conflict from "./models/Conflict"
 import Photo from "./models/Photo"
+import User from "./models/User"
 
 // SQLite adapter to the underlying database
 const adapter = new SQLiteAdapter({
@@ -23,7 +22,7 @@ const adapter = new SQLiteAdapter({
 
 const database = new Database({
 	adapter,
-	modelClasses: [InspectionTemplate, Inspection, SyncOperation, Conflict, Photo],
+	modelClasses: [User, InspectionTemplate, Inspection, SyncOperation, Conflict, Photo],
 })
 
 export default database

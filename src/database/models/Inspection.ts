@@ -42,14 +42,4 @@ export default class Inspection extends Model {
 	@field("updated_ts") updatedTs!: number
 	@field("last_action_ts") lastActionTs!: number
 	@field("submitted_ts") submittedTs?: number
-
-	get needsSync(): boolean {
-		// helper method: is this ready to sync?
-		return !this.isSynced && this.status !== "draft"
-	}
-
-	get hasConflict(): boolean {
-		// helper method: has unresolved conflict?
-		return this.status === "conflict"
-	}
 }
