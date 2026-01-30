@@ -32,7 +32,7 @@ export default class Inspection extends Model {
 
 	@field("version") version!: number
 	@text("inspector_id") inspectorId!: string
-	@field("status") status!: "draft" | "submitted" | "synced" | "conflict"
+	@field("status") status!: "draft" | "submitted" | "synced" | "conflict" | "sync_failed"
 
 	@field("is_synced") isSynced!: boolean
 	@field("synced_ts") syncedTs?: number

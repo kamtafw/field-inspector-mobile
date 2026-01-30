@@ -11,6 +11,7 @@ import PhotoUploadService from "../photo/PhotoUploadService"
 import ErrorAlert from "@/src/components/ui/ErrorAlert"
 import { CircuitBreaker } from "./CircuitBreaker"
 import { NetworkResilience } from "../network/NetworkResilience"
+import database from "@/src/database"
 
 export type SyncStatus = "idle" | "syncing" | "error"
 
@@ -290,10 +291,17 @@ class SyncEngine {
 			}
 
 			if (operation.retryCount >= operation.maxRetries) {
+				console.error(`❌ Max retries exceeded for inspection ${operation.entityId}`)
+
+				await InspectionRepository.quarantineInspection(operation.entityId, err.message)
+
+				return
+
 				await InspectionRepository.markSyncError(
 					operation.entityId,
 					"Sync failed after maximum retries. Your changes are saved locally.",
 				)
+
 				return
 			}
 
@@ -406,6 +414,19 @@ class SyncEngine {
 			console.error("❌ Failed to create conflict record:", err)
 			throw err
 		}
+	}
+
+	private async quarantineInspection(inspectionId: string, errorMessage: string): Promise<void> {
+		const inspection = await InspectionRepository.getById(inspectionId)
+		if (!inspection) return
+
+		await database.write(async () => {
+			await inspection.update((record) => {
+				record.status = "sync_failed"
+				record.syncError = errorMessage
+				record.submittedTs = Date.now()
+			})
+		})
 	}
 
 	/** Get sync stats */

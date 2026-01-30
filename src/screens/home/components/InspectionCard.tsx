@@ -42,6 +42,8 @@ function InspectionCard({ inspection }: InspectionProp) {
 	const handlePress = () => {
 		if (inspection.status === "conflict") {
 			navigation.navigate("ConflictResolution", { inspectionId: inspection.id })
+		} else if (inspection.status === "sync_failed" || inspection.status === "submitted") {
+			navigation.navigate("FailedInspection", { inspectionId: inspection.id })
 		} else {
 			navigation.navigate("InspectionDetail", { id: inspection.id })
 		}

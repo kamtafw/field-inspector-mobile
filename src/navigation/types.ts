@@ -14,7 +14,7 @@ export type MainStackParamList = {
 	Home: undefined
 	CreateInspection: undefined
 	InspectionDetail: { id: string }
+	FailedInspection: { inspectionId: string }
 	ConflictResolution: { inspectionId: string }
-	ConflictList: undefined
 	Profile: undefined
 }

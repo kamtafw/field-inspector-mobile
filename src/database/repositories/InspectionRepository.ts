@@ -55,6 +55,13 @@ class InspectionRepository {
 			.fetch()
 	}
 
+	/** Get all unsynced inspections */
+	async getSyncFailed(): Promise<Inspection[]> {
+		return await this.collection
+			.query(Q.where("is_synced", false), Q.where("status", Q.oneOf(["sync_failed", "submitted"])))
+			.fetch()
+	}
+
 	/** WRITES */
 
 	/** Create new inspection (offline-first) */
@@ -193,6 +200,20 @@ class InspectionRepository {
 			console.error("inspection raw:", (inspection as any)?._raw)
 			throw err
 		}
+	}
+
+	async quarantineInspection(inspectionId: string, errorMessage: string): Promise<void> {
+		const inspection = await this.getById(inspectionId)
+		if (!inspection) return
+
+		await database.write(async () => {
+			await inspection.update((record) => {
+				record.status = "sync_failed"
+				record.isSynced = false
+				record.syncError = errorMessage
+				record.submittedTs = Date.now()
+			})
+		})
 	}
 
 	/** Delete inspection (local only for now) */

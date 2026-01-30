@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from "react"
 import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from "react-native"
+import { RouteProp, useNavigation, useRoute } from "@react-navigation/native"
+import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { clsx } from "clsx"
-import { RouteProp, useNavigation, useRoute } from "@react-navigation/native"
+
 import InspectionRepository from "@/src/database/repositories/InspectionRepository"
 import ConflictRepository from "@/src/database/repositories/ConflictRepository"
 import ConflictResolver from "@/src/services/sync/ConflictDetector"
-import SyncEngine from "@/src/services/sync/SyncEngine"
 import { MainStackParamList } from "@/src/navigation/types"
-import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import Conflict from "@/src/database/models/Conflict"
 
 type ConflictResolutionProp = RouteProp<MainStackParamList, "ConflictResolution">
