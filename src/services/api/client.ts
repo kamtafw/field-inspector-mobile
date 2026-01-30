@@ -245,18 +245,4 @@ export function getErrorMessage(error: any): string {
 	return "An unexpected error occurred."
 }
 
-/** Clear refresh state (for testing) */
-export function clearRefreshState() {
-	isRefreshing = false
-	refreshSubscribers = []
-}
-
-/** Get refresh state (for debugging) */
-export function getRefreshState() {
-	return {
-		isRefreshing,
-		queueLength: refreshSubscribers.length,
-	}
-}
-
 export default api

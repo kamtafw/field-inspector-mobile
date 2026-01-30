@@ -18,7 +18,6 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import PhotoGallery from "./components/PhotoGallery"
 import EmptyState from "@/src/components/ui/EmptyState"
 import { InspectionDetailSkeleton } from "@/src/components/ui/SkeletonLoader"
-import InspectionRepository from "@/src/database/repositories/InspectionRepository"
 
 type InspectionDetailRouteProp = RouteProp<MainStackParamList, "InspectionDetail">
 type NavigationProp = NativeStackNavigationProp<MainStackParamList>
@@ -28,7 +27,7 @@ export default function InspectionDetailScreen() {
 	const navigation = useNavigation<NavigationProp>()
 	const { id } = route.params
 
-	const { updateInspection, submitInspection } = useInspections()
+	const { updateInspection, submitInspection, deleteInspection } = useInspections()
 	const { inspection, isLoading, error } = useInspectionDetail(id)
 
 	const [isEditing, setIsEditing] = useState(false)
@@ -121,7 +120,7 @@ export default function InspectionDetailScreen() {
 					style: "destructive",
 					onPress: async () => {
 						try {
-							await InspectionRepository.delete(inspection.id)
+							await deleteInspection(inspection.id)
 							Alert.alert("Success", "Inspection deleted")
 							navigation.goBack()
 						} catch (err: any) {

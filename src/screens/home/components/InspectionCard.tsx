@@ -2,10 +2,8 @@ import { Text, TouchableOpacity, View } from "react-native"
 import { useNavigation } from "@react-navigation/native"
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { withObservables } from "@nozbe/watermelondb/react"
-import Inspection from "@/src/database/models/Inspection"
 import { MainStackParamList } from "@/src/navigation/types"
-import InspectionsAPI from "@/src/services/api/inspections.api"
-import InspectionRepository from "@/src/database/repositories/InspectionRepository"
+import Inspection from "@/src/database/models/Inspection"
 
 interface InspectionProp {
 	inspection: Inspection
@@ -47,30 +45,6 @@ function InspectionCard({ inspection }: InspectionProp) {
 		} else {
 			navigation.navigate("InspectionDetail", { id: inspection.id })
 		}
-	}
-
-	const handleSyncInspection = async () => {
-		const response = await InspectionsAPI.create(
-			{
-				template_id: inspection.templateId,
-				facility_name: inspection.facilityName,
-				facility_address: inspection.facilityAddress,
-				responses: inspection.responses,
-				status: "draft",
-				version: inspection.version,
-			},
-			"e0df5cf5-f17e-4118-8b41-ba9c8528afe8",
-		)
-
-		await InspectionRepository.markSynced(inspection.id, response.id, response.version)
-	}
-
-	const handleUpdateInspection = async () => {
-		await InspectionRepository.update(inspection.id, {
-			facilityName: "New Conflict",
-			facilityAddress: "Conflict Address",
-			status: "submitted",
-		})
 	}
 
 	const formattedDate = new Date(inspection.createdTs).toLocaleDateString("en-US", {

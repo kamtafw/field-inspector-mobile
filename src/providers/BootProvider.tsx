@@ -4,8 +4,6 @@ import { DatabaseStep } from "../services/boot/steps/DatabaseStep"
 import { AuthStep } from "../services/boot/steps/AuthStep"
 import { NetworkStep } from "../services/boot/steps/NetworkStep"
 import { AutoSyncStep } from "../services/boot/steps/AutoSyncStep"
-import { NotificationStep } from "../services/boot/steps/NotificationStep"
-import { AnalyticsStep } from "../services/boot/steps/AnalyticsStep"
 import BootLoadingScreen from "../components/boot/BootLoadingScreen"
 import BootErrorScreen from "../components/boot/BootErrorScreen"
 import { DataIntegrityService } from "../services/integrity/DataIntegrityService"
@@ -80,8 +78,6 @@ export function BootProvider({ children }: { children: React.ReactNode }) {
 			BootManager.registerStep(AuthStep)
 			BootManager.registerStep(NetworkStep)
 			BootManager.registerStep(AutoSyncStep)
-			BootManager.registerStep(NotificationStep)
-			BootManager.registerStep(AnalyticsStep)
 
 			BootManager.onStepComplete((step, success) => {
 				setCurrentStep(step)

@@ -15,5 +15,5 @@
 		"services/websocketManager.js",
 		"src/theme/colors.js",
 		"global.d.ts"
-	]
+, ".complex/ErrorAlert2.tsx"	]
 }

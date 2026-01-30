@@ -1,0 +1,14 @@
+# TODO
+
+- implement toast functionality properly
+- refactor ErrorHandler to use error.types.ts
+- integrate `src/theme/colors.js` into Tailwind config
+- consolidate NetworkResilience retry logic
+- delete `src/database/init.ts` and only use `src/database/index.ts`
+
+## Code smells to address later
+
+1. Too many responsibilities in `SyncEngine`
+2. Duplicate validation logic across frontend/backend
+3. No separation of concerns in some screens
+4. Mixed concerns in repositories (business logic vs data access)
