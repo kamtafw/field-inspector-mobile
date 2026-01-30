@@ -3,36 +3,12 @@ import NetInfo, { NetInfoState } from "@react-native-community/netinfo"
 
 export type NetworkStatus = "online" | "offline" | "unknown"
 
-// export type NetworkState = {
-// 	isConnected: boolean
-// 	isInternetReachable: boolean
-// 	type: Network.NetworkStateType | null
-// }
-
-// type NetworkCallback = (state: Network.NetworkState) => void
-
-// export function subscribeToNetworkChanges(callback: NetworkCallback) {
-// 	const subscription = Network.addNetworkStateListener(callback)
-
-// 	return () => subscription.remove()
-// }
-
-// export async function getNetworkState(): Promise<NetworkState> {
-// 	const state = await Network.getNetworkStateAsync()
-
-// 	return {
-// 		isConnected: Boolean(state.isConnected),
-// 		isInternetReachable: Boolean(state.isInternetReachable),
-// 		type: state.type ?? null,
-// 	}
-// }
-
 class NetworkMonitor {
 	private status: NetworkStatus = "unknown"
 	private listeners: Array<(status: NetworkStatus) => void> = []
 	private netInfoUnsubscribe?: () => void
+	private debounceTimeout?: NodeJS.Timeout
 
-	/** Initialize network monitoring */
 	/** Initialize network monitoring */
 	initialize() {
 		console.log("🌐 NetworkMonitor: Initializing...")
@@ -58,13 +34,28 @@ class NetworkMonitor {
 	private handleNetworkChange(state: NetInfoState) {
 		const newStatus: NetworkStatus = state.isConnected ? "online" : "offline"
 
-		if (newStatus !== this.status) {
-			const oldStatus = this.status
-			this.status = newStatus
-
-			console.log(`🌐 Network status changed: ${oldStatus} → ${newStatus}`)
-			this.notifyListeners()
+		// debounce rapid state changes
+		if (this.debounceTimeout) {
+			clearTimeout(this.debounceTimeout)
 		}
+
+		this.debounceTimeout = setTimeout(() => {
+			if (newStatus !== this.status) {
+				const oldStatus = this.status
+				this.status = newStatus
+
+				console.log(`🌐 Network status changed: ${oldStatus} → ${newStatus}`)
+
+				if (newStatus === "online") {
+					console.log("⏳ Waiting 2s before starting sync...")
+					setTimeout(() => {
+						this.notifyListeners()
+					}, 2000)
+				} else {
+					this.notifyListeners()
+				}
+			}
+		}, 1000)
 	}
 
 	/** Get current network status */

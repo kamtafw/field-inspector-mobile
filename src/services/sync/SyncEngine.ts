@@ -1,4 +1,5 @@
 import * as SecureStore from "expo-secure-store"
+import { Alert } from "react-native"
 import NetInfo from "@react-native-community/netinfo"
 import SyncOperation from "@/src/database/models/SyncOperation"
 import InspectionsAPI, { ConflictResponse } from "../api/inspections.api"
@@ -8,8 +9,8 @@ import InspectionRepository from "@/src/database/repositories/InspectionReposito
 import SyncRepository from "@/src/database/repositories/SyncRepository"
 import PhotoUploadService from "../photo/PhotoUploadService"
 import ErrorAlert from "@/src/components/ui/ErrorAlert"
+import { CircuitBreaker } from "./CircuitBreaker"
 import { NetworkResilience } from "../network/NetworkResilience"
-import { Alert } from "react-native"
 
 export type SyncStatus = "idle" | "syncing" | "error"
 
@@ -29,6 +30,8 @@ class SyncEngine {
 	private listeners: Array<(status: SyncStatus, stats?: SyncStats) => void> = []
 	private retryTimeoutId?: NodeJS.Timeout
 	private networkUnsubscribe?: () => void
+
+	private circuitBreaker = new CircuitBreaker()
 
 	async initialize() {
 		console.log("🔄 SyncEngine: Initializing...")
@@ -310,14 +313,16 @@ class SyncEngine {
 			version: payload.version,
 		}
 
-		const response = await NetworkResilience.withRetry(
-			() => InspectionsAPI.create(data, operation.idempotencyKey),
-			{ maxAttempts: 3 },
-		)
+		await this.circuitBreaker.execute(async () => {
+			const response = await NetworkResilience.withRetry(
+				() => InspectionsAPI.create(data, operation.idempotencyKey),
+				{ maxAttempts: 3 },
+			)
 
-		await InspectionRepository.markSynced(operation.entityId, response.id, response.version)
-		await SyncRepository.markCompleted(operation.id)
-		console.log("✅ CREATE synced, remote_id:", response.id)
+			await InspectionRepository.markSynced(operation.entityId, response.id, response.version)
+			await SyncRepository.markCompleted(operation.id)
+			console.log("✅ CREATE synced, remote_id:", response.id)
+		})
 	}
 
 	/** Sync UPDATE_INSPECTION operation */
@@ -341,17 +346,19 @@ class SyncEngine {
 			version: payload.version,
 		}
 
-		const response = await NetworkResilience.withRetry(
-			() => InspectionsAPI.update(remoteId, data, operation.idempotencyKey),
-			{ maxAttempts: 3 },
-		)
+		await this.circuitBreaker.execute(async () => {
+			const response = await NetworkResilience.withRetry(
+				() => InspectionsAPI.update(remoteId, data, operation.idempotencyKey),
+				{ maxAttempts: 3 },
+			)
 
-		if ("error" in response && response.error === "conflict") {
-			throw { response: { status: 409, data: response } }
-		}
+			if ("error" in response && response.error === "conflict") {
+				throw { response: { status: 409, data: response } }
+			}
 
-		await InspectionRepository.markSynced(operation.entityId, response.id, response.version)
-		await SyncRepository.markCompleted(operation.id)
+			await InspectionRepository.markSynced(operation.entityId, response.id, response.version)
+			await SyncRepository.markCompleted(operation.id)
+		})
 	}
 
 	/** Handle 409 conflict response */

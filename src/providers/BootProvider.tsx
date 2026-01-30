@@ -8,6 +8,8 @@ import { NotificationStep } from "../services/boot/steps/NotificationStep"
 import { AnalyticsStep } from "../services/boot/steps/AnalyticsStep"
 import BootLoadingScreen from "../components/boot/BootLoadingScreen"
 import BootErrorScreen from "../components/boot/BootErrorScreen"
+import { DataIntegrityService } from "../services/integrity/DataIntegrityService"
+import { Alert } from "react-native"
 
 export type BootStatus = "booting" | "ready" | "error"
 
@@ -36,6 +38,35 @@ export function BootProvider({ children }: { children: React.ReactNode }) {
 	const [currentStep, setCurrentStep] = useState<BootStep | null>(null)
 	const [error, setError] = useState<Error | null>(null)
 	const [results, setResults] = useState<BootStepResult[]>([])
+
+	useEffect(() => {
+		const runIntegrityCheck = async () => {
+			console.log("🔍 Running data integrity check...")
+
+			const report = await DataIntegrityService.runIntegrityCheck(true)
+
+			if (report.issues.length > 0) {
+				console.log(`⚠️ Found ${report.issues.length} integrity issues`)
+				console.log(`✅ Fixed ${report.fixedCount} issues automatically`)
+
+				const criticalIssues = report.issues.filter((i) => i.severity === "high" && !i.autoFixed)
+
+				if (criticalIssues.length > 0) {
+					Alert.alert(
+						"Data Issues Detected",
+						`Found ${criticalIssues.length} issues that need attention.`,
+						[{ text: "OK" }],
+					)
+				}
+			}
+		}
+
+		runIntegrityCheck()
+	}, [])
+
+	useEffect(() => {
+		initializeApp()
+	}, [])
 
 	const initializeApp = async () => {
 		try {
@@ -74,10 +105,6 @@ export function BootProvider({ children }: { children: React.ReactNode }) {
 			setStatus("error")
 		}
 	}
-
-	useEffect(() => {
-		initializeApp()
-	}, [])
 
 	const retry = async () => {
 		await initializeApp()

@@ -1,6 +1,6 @@
 import NetworkMonitor, { NetworkStatus } from "@/src/services/network/NetworkMonitor"
 import { useEffect, useRef, useState } from "react"
-import { Text, View } from "react-native"
+import { Text } from "react-native"
 import Feather from "@expo/vector-icons/Feather"
 import { Animated } from "react-native"
 
@@ -43,7 +43,7 @@ export default function NetworkStatusIndicator() {
 
 	return (
 		<Animated.View
-			className="bg-[#ff9500] flex-row items-center py-2 px-4"
+			className="bg-[#f0f0f0] flex-row items-center py-2 px-4"
 			style={{
 				transform: [{ translateY: slideAnim }],
 				position: "absolute",
@@ -53,15 +53,9 @@ export default function NetworkStatusIndicator() {
 				zIndex: 100,
 			}}
 		>
-			{status === "offline" ? (
-				<Feather name="wifi-off" size={18} color="white" className="mr-2" />
-			) : (
-				<View className="w-2 h-2 rounded bg-white mr-2" />
-			)}
-			<Text className="text-sm text-white font-medium">
-				{status === "offline"
-					? "You're offline. Changes will sync when reconnected."
-					: "Checking connection..."}
+			<Feather name="wifi-off" size={18} color="white" className="mr-2" />
+			<Text className="text-sm text-[#666] font-medium ml-2">
+				Offline Mode - Changes saved locally
 			</Text>
 		</Animated.View>
 	)

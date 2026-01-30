@@ -1,5 +1,3 @@
-import Inspection from "@/src/database/models/Inspection"
-import InspectionRepository from "@/src/database/repositories/InspectionRepository"
 import useInspectionDetail from "@/src/hooks/useInspectionDetail"
 import useInspections from "@/src/hooks/useInspections"
 import { MainStackParamList } from "@/src/navigation/types"
@@ -20,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import PhotoGallery from "./components/PhotoGallery"
 import EmptyState from "@/src/components/ui/EmptyState"
 import { InspectionDetailSkeleton } from "@/src/components/ui/SkeletonLoader"
+import InspectionRepository from "@/src/database/repositories/InspectionRepository"
 
 type InspectionDetailRouteProp = RouteProp<MainStackParamList, "InspectionDetail">
 type NavigationProp = NativeStackNavigationProp<MainStackParamList>

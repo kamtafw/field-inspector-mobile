@@ -1,13 +1,10 @@
-import { Q } from "@nozbe/watermelondb"
-import { Subscription } from "rxjs"
-import database from "@/src/database"
+import * as SecureStore from "expo-secure-store"
 import SyncEngine from "./SyncEngine"
 import PhotoUploadService from "../photo/PhotoUploadService"
-import Inspection from "@/src/database/models/Inspection"
-import Photo from "@/src/database/models/Photo"
 import NetworkMonitor from "../network/NetworkMonitor"
 import InspectionRepository from "@/src/database/repositories/InspectionRepository"
 import PhotoRepository from "@/src/database/repositories/PhotoRepository"
+import { DataIntegrityService } from "../integrity/DataIntegrityService"
 
 /**
  * Global listener that automatically triggers sync when inspections are created/updated
@@ -34,6 +31,20 @@ class AutoSyncService {
 
 		this.isInitialized = true
 		console.log("✅ AutoSyncService initialized")
+
+		const runCleanup = async () => {
+			const lastCleanup = await SecureStore.getItemAsync("lastDataCleanup")
+			const now = Date.now()
+
+			if (!lastCleanup || now - parseInt(lastCleanup) > 24 * 60 * 60 * 1000) {
+				console.log("🧹 Running data cleanup...")
+				await DataIntegrityService.cleanupOldRecords()
+				await SecureStore.setItemAsync("lastDataCleanup", now.toString())
+			}
+		}
+
+		await runCleanup()
+		setInterval(runCleanup, 24 * 60 * 60 * 1000) // daily cleanup
 	}
 
 	/** Poll for pending work every 5 seconds */

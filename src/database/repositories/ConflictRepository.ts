@@ -117,7 +117,7 @@ class ConflictRepository {
 		const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000
 
 		const oldConflicts = await this.collection
-			.query(Q.where("resolved", true), Q.where("resolved_at", Q.lt(thirtyDaysAgo)))
+			.query(Q.where("resolved", true), Q.where("resolved_ts", Q.lt(thirtyDaysAgo)))
 			.fetch()
 
 		await database.write(async () => {
