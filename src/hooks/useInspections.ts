@@ -8,8 +8,8 @@ import InspectionRepository, {
 	UpdateInspectionPayload,
 } from "@/src/database/repositories/InspectionRepository"
 import { useAuth } from "@/src/providers/AuthProvider"
-import ErrorAlert from "@/src/components/ui/ErrorAlert"
 import ErrorHandler from "@/src/services/error/ErrorHandler"
+import UnifiedErrorHandler from "../services/error/UnifiedErrorHandler"
 
 interface UseInspectionsReturn {
 	inspections: Inspection[] | null
@@ -63,8 +63,7 @@ export default function useInspections(): UseInspectionsReturn {
 				})
 			} catch (err: any) {
 				console.error("Error loading inspections:", err)
-				const errorMessage = ErrorHandler.getSimpleMessage(err)
-				setError(errorMessage)
+				setError(err)
 			} finally {
 				setIsLoading(false)
 			}
@@ -104,7 +103,7 @@ export default function useInspections(): UseInspectionsReturn {
 			const errorMessage = err.message || "Failed to create inspection"
 			setError(errorMessage)
 			console.error("Error creating inspection:", err)
-			ErrorAlert.show(err, () => createInspection(data))
+			UnifiedErrorHandler.showError(err, () => createInspection(data))
 			throw err
 		} finally {
 			setIsCreating(false)
@@ -127,7 +126,7 @@ export default function useInspections(): UseInspectionsReturn {
 			return inspection
 		} catch (err: any) {
 			console.error("Error updating inspection:", err)
-			ErrorAlert.show(err, () => updateInspection(id, data))
+			UnifiedErrorHandler.showError(err, () => updateInspection(id, data))
 			throw err
 		} finally {
 			setIsUpdating(false)
@@ -142,7 +141,7 @@ export default function useInspections(): UseInspectionsReturn {
 			console.log("✅ Inspection deleted:", id)
 		} catch (err: any) {
 			console.error("Error deleting inspection:", err)
-			ErrorAlert.show(err, () => deleteInspection(id))
+			UnifiedErrorHandler.showError(err, () => deleteInspection(id))
 			throw err
 		}
 	}
@@ -163,7 +162,7 @@ export default function useInspections(): UseInspectionsReturn {
 			console.log("📤 Inspection submitted, triggering sync...")
 		} catch (err) {
 			console.error("Failed to submit inspection:", err)
-			ErrorAlert.show(err, () => deleteInspection(id))
+			UnifiedErrorHandler.showError(err, () => deleteInspection(id))
 			throw err
 		}
 	}

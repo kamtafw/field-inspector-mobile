@@ -11,6 +11,7 @@ interface SyncStats {
 	failed: number
 	syncing: boolean
 	syncedCount: number
+	syncFailedCount: number
 	totalToSync: number
 	lastSyncTs?: number
 }
@@ -22,6 +23,7 @@ export default function SyncStatusBar() {
 		failed: 0,
 		syncing: false,
 		syncedCount: 0,
+		syncFailedCount: 0,
 		totalToSync: 0,
 	})
 
@@ -34,6 +36,7 @@ export default function SyncStatusBar() {
 
 		const checkStats = async () => {
 			const unsynced = (await InspectionRepository.getUnsynced()).length
+			const syncFailed = (await InspectionRepository.getSyncFailed()).length
 			const failed = await SyncRepository.collection
 				.query(Q.and(Q.where("status", "failed"), Q.where("retry_count", Q.lt(5))))
 				.fetchCount()
@@ -43,6 +46,7 @@ export default function SyncStatusBar() {
 
 			setStats({
 				pending: unsynced,
+				syncFailedCount: syncFailed,
 				failed,
 				syncing: status === "syncing",
 				syncedCount: syncStats.syncedCount || 0,
@@ -78,7 +82,7 @@ export default function SyncStatusBar() {
 		return new Date(timestamp).toLocaleDateString()
 	}
 
-	if (stats.pending === 0 && stats.failed === 0 && !stats.syncing) {
+	if (stats.pending === 0 && stats.failed === 0 && stats.syncFailedCount === 0 && !stats.syncing) {
 		return (
 			<View className="flex-row items-center justify-between bg-[#d4edda] py-2 px-3 rounded-xl">
 				<Text className="text-[#155724] text-xs font-semibold">✓ All synced</Text>
@@ -103,10 +107,31 @@ export default function SyncStatusBar() {
 		)
 	}
 
+	if (stats.syncFailedCount > 0) {
+		return (
+			<View className="flex-row items-center justify-between bg-[#fff3cd] py-2 px-3 rounded-xl">
+				<View className="flex-row items-center">
+					<View className="w-1 h-1 rounded-sm bg-[#856404] mr-1" />
+					<Text className="text-[#856404] text-xs font-semibold">
+						{stats.syncFailedCount} inspections failed to sync
+					</Text>
+				</View>
+
+				{stats.lastSyncTs && (
+					<Text className="text-xs text-gray-500 mt-1">
+						Last synced: {formatLastSync(stats.lastSyncTs)}
+					</Text>
+				)}
+			</View>
+		)
+	}
+
 	if (stats.failed > 0) {
 		return (
 			<View className="flex-row items-center justify-between bg-[#f8d7da] py-2 px-3 rounded-xl">
-				<Text className="text-[#721c24] text-xs font-semibold">⚠️ {stats.failed} failed</Text>
+				<Text className="text-[#721c24] text-xs font-semibold">
+					⚠️ {stats.failed} failed operations
+				</Text>
 
 				{stats.lastSyncTs && (
 					<Text className="text-xs text-gray-500 mt-1">

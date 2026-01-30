@@ -6,6 +6,7 @@ import { AuthProvider } from "./src/providers/AuthProvider"
 import { BootProvider } from "./src/providers/BootProvider"
 import { ErrorBoundary } from "./src/components/ui/ErrorBoundary"
 import "./global.css"
+import GlobalErrorToast from "./src/components/ui/GlobalErrorToast"
 
 /*
 TODO: defensive DB initialization - on app start:
@@ -23,6 +24,7 @@ export default function App() {
 					<SafeAreaProvider>
 						<StatusBar barStyle="dark-content" />
 						<RootNavigator />
+						<GlobalErrorToast />
 					</SafeAreaProvider>
 				</AuthProvider>
 			</BootProvider>
