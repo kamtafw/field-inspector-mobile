@@ -1,4 +1,3 @@
-import * as FileSystem from "expo-file-system/legacy"
 import NetInfo from "@react-native-community/netinfo"
 import PhotosAPI from "@/src/services/api/photos.api"
 import PhotoRepository from "@/src/database/repositories/PhotoRepository"
@@ -97,7 +96,6 @@ class PhotoUploadService {
 		}
 
 		if (!inspection.remoteId) {
-			console.log(`⏳ Photo ${photoId} waiting - inspection ${inspection.id} not synced yet`)
 			// not marked as failed - skipped; will retry when inspection syncs
 			return
 		}

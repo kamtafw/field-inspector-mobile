@@ -3,6 +3,7 @@ import InspectionRepository from "@/src/database/repositories/InspectionReposito
 import PhotoRepository from "@/src/database/repositories/PhotoRepository"
 import SyncRepository from "@/src/database/repositories/SyncRepository"
 import ConflictRepository from "@/src/database/repositories/ConflictRepository"
+import { Q } from "@nozbe/watermelondb"
 
 interface IntegrityReport {
 	timestamp: number
@@ -92,9 +93,7 @@ export class DataIntegrityService {
 		}
 	}
 
-	/**
-	 * Check for sync operations referencing deleted inspections
-	 */
+	/** Check for sync operations referencing deleted inspections */
 	private static async checkOrphanedSyncOperations(
 		autoFix: boolean,
 	): Promise<IntegrityIssue | null> {
@@ -145,9 +144,7 @@ export class DataIntegrityService {
 		}
 	}
 
-	/**
-	 * Check for photos referencing deleted inspections
-	 */
+	/** Check for photos referencing deleted inspections */
 	private static async checkOrphanedPhotos(autoFix: boolean): Promise<IntegrityIssue | null> {
 		try {
 			const allPhotos = await PhotoRepository.collection.query().fetch()
@@ -257,9 +254,7 @@ export class DataIntegrityService {
 		}
 	}
 
-	/**
-	 * Check for resolved conflicts where inspection is still marked as conflicted
-	 */
+	/** Check for resolved conflicts where inspection is still marked as conflicted */
 	private static async checkStaleConflicts(autoFix: boolean): Promise<IntegrityIssue | null> {
 		try {
 			const allConflicts = await ConflictRepository.collection.query().fetch()
@@ -298,9 +293,7 @@ export class DataIntegrityService {
 		}
 	}
 
-	/**
-	 * Check for synced inspections without remoteId
-	 */
+	/** Check for synced inspections without remoteId */
 	private static async checkMissingRemoteIds(autoFix: boolean): Promise<IntegrityIssue | null> {
 		try {
 			const allInspections = await InspectionRepository.collection.query().fetch()
@@ -336,9 +329,7 @@ export class DataIntegrityService {
 		}
 	}
 
-	/**
-	 * Check for duplicate pending sync operations
-	 */
+	/** Check for duplicate pending sync operations */
 	private static async checkDuplicateSyncOperations(
 		autoFix: boolean,
 	): Promise<IntegrityIssue | null> {
@@ -379,20 +370,27 @@ export class DataIntegrityService {
 		}
 	}
 
-	/**
-	 * Clean up old completed/resolved records
-	 */
+	/** Clean up old completed/resolved records */
 	static async cleanupOldRecords(): Promise<void> {
-		console.log("🧹 Cleaning up old records...")
-
-		// Clean up old sync operations (7+ days)
+		// clean up old sync operations (7+ days)
 		const cleanedOps = await SyncRepository.cleanupOldOperations()
 		console.log(`   Removed ${cleanedOps} old sync operations`)
 
-		// Clean up old resolved conflicts (30+ days)
+		// clean up old resolved conflicts (30+ days)
 		const cleanedConflicts = await ConflictRepository.cleanupOldConflicts()
 		console.log(`   Removed ${cleanedConflicts} old resolved conflicts`)
 
-		console.log("✅ Cleanup complete")
+		// clean up old idempotency records (7+ days)
+		const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+
+		const oldOps = await SyncRepository.collection
+			.query(Q.where("status", "completed"), Q.where("completed_ts", Q.lt(sevenDaysAgo)))
+			.fetch()
+
+		const keysToCleanup = oldOps.map((op) => op.idempotencyKey)
+
+		// TODO: Call backend endpoint to cleanup old idempotency records
+		// await api.post('/sync/cleanup-idempotency/', { keys: keysToCleanup })
+		console.log(`   Identified ${keysToCleanup.length} idempotency keys for cleanup`)
 	}
 }

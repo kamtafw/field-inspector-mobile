@@ -1,5 +1,8 @@
-import * as Network from "expo-network"
 import NetInfo, { NetInfoState } from "@react-native-community/netinfo"
+import * as SecureStore from "expo-secure-store"
+import AuthAPI from "../api/auth.api"
+import { Alert } from "react-native"
+import { useAuth } from "@/src/providers/AuthProvider"
 
 export type NetworkStatus = "online" | "offline" | "unknown"
 
@@ -56,6 +59,47 @@ class NetworkMonitor {
 				}
 			}
 		}, 1000)
+	}
+
+	private async handleReconnect() {
+		console.log("🌐 Network reconnected, checking auth status...")
+
+		const needsRefresh = await SecureStore.getItemAsync("needsTokenRefresh")
+
+		if (needsRefresh === "true") {
+			try {
+				const refreshToken = await SecureStore.getItemAsync("refreshToken")
+
+				if (!refreshToken) {
+					throw new Error("No refresh token available")
+				}
+
+				await AuthAPI.refreshToken(refreshToken)
+
+				console.log("✅ Token refreshed after offline session")
+
+				this.notifyListeners()
+			} catch (err) {
+				console.error("❌ Failed to refresh token after reconnect:", err)
+
+				Alert.alert(
+					"Session expired",
+					"Your session expired while offline. Please log in again to sync your work.",
+					[
+						{
+							text: "Log In",
+							onPress: async () => {
+								const { logout } = useAuth()
+								await logout(false)
+							},
+						},
+						{ text: "Later", style: "cancel" },
+					],
+				)
+			}
+		} else {
+			this.notifyListeners()
+		}
 	}
 
 	/** Get current network status */

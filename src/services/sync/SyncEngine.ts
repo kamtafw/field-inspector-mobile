@@ -67,13 +67,11 @@ class SyncEngine {
 	/** Process all pending sync operations */
 	async processQueue(): Promise<void> {
 		if (this.isProcessing) {
-			console.log("⏳ Already processing, skipping...")
 			return
 		}
 
 		const netState = await NetInfo.fetch()
 		if (!netState.isConnected) {
-			console.log("📴 Offline, cannot process sync operations")
 			return
 		}
 
@@ -324,7 +322,7 @@ class SyncEngine {
 		await this.circuitBreaker.execute(async () => {
 			const response = await NetworkResilience.withRetry(
 				() => InspectionsAPI.create(data, operation.idempotencyKey),
-				{ maxAttempts: 3 },
+				{ maxAttempts: 3, baseDelay: 1000 },
 			)
 
 			await InspectionRepository.markSynced(operation.entityId, response.id, response.version)
@@ -357,7 +355,7 @@ class SyncEngine {
 		await this.circuitBreaker.execute(async () => {
 			const response = await NetworkResilience.withRetry(
 				() => InspectionsAPI.update(remoteId, data, operation.idempotencyKey),
-				{ maxAttempts: 3 },
+				{ maxAttempts: 3, baseDelay: 1000 },
 			)
 
 			if ("error" in response && response.error === "conflict") {

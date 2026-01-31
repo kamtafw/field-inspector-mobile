@@ -98,6 +98,7 @@ api.interceptors.response.use(
 					message: "You're offline. Your work is saved locally.",
 					isOfflineAuthError: true,
 					shouldAllowOfflineWork: true,
+					originalError: error,
 				})
 			}
 
