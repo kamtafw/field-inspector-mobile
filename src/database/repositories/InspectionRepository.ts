@@ -4,6 +4,7 @@ import { Q } from "@nozbe/watermelondb"
 import Inspection, { InspectionResponse } from "../models/Inspection"
 import SyncOperation from "../models/SyncOperation"
 import database from ".."
+import SyncRepository from "./SyncRepository"
 
 export interface CreateInspectionPayload {
 	templateId: string
@@ -269,7 +270,11 @@ class InspectionRepository {
 			return
 		}
 
-		const idempotencyKey = uuid4()
+		let idempotencyKey: string
+
+		do {
+			idempotencyKey = uuid4()
+		} while (await SyncRepository.existsByIdempotencyKey(idempotencyKey))
 
 		await this.syncCollection.create((record) => {
 			record.operationType = operationType

@@ -1,3 +1,4 @@
+import * as FileSystem from "expo-file-system"
 import NetInfo from "@react-native-community/netinfo"
 import PhotosAPI from "@/src/services/api/photos.api"
 import PhotoRepository from "@/src/database/repositories/PhotoRepository"
@@ -8,10 +9,22 @@ interface UploadProgress {
 	progress: number
 }
 
+interface PhotoWaitingState {
+	photoId: string
+	inspectionId: string
+	attempts: number
+	firstAttemptTs: number
+}
+
 class PhotoUploadService {
 	private isProcessing = false
 	private progressListeners: Array<(progress: UploadProgress) => void> = []
 	private networkUnsubscribe?: () => void
+
+	// track photos waiting for inspection remoteId
+	private waitingPhotos = new Map<string, PhotoWaitingState>()
+	private readonly MAX_WAIT_ATTEMPTS = 10
+	private readonly MAX_WAIT_TIME = 30 * 60 * 1000
 
 	/** Start processing photo upload queue */
 	async initialize(): Promise<void> {
@@ -30,12 +43,65 @@ class PhotoUploadService {
 		if (netState.isConnected) {
 			await this.processQueue()
 		}
+
+		setInterval(() => this.checkWaitingPhotos(), 30000) // check waiting photos every 30s
 	}
 
 	/** Clean up on app close */
 	cleanup(): void {
 		if (this.networkUnsubscribe) {
 			this.networkUnsubscribe()
+		}
+	}
+
+	/** Check if waiting photos can now be uploaded */
+	private async checkWaitingPhotos(): Promise<void> {
+		if (this.waitingPhotos.size === 0) return
+
+		console.log(`📸 Checking ${this.waitingPhotos.size} photos waiting for inspection sync...`)
+
+		const photosToRetry: string[] = []
+		const photosToFail: string[] = []
+
+		for (const [photoId, state] of this.waitingPhotos.entries()) {
+			// check if inspection now has remoteId
+			const inspection = await InspectionRepository.getById(state.inspectionId)
+
+			if (inspection?.remoteId) {
+				console.log(`✅ Inspection ${state.inspectionId} now synced, retrying photo ${photoId}`)
+				photosToRetry.push(photoId)
+				continue
+			}
+
+			// check if wait-time or wait-attempts has been exceeded
+			const waitTime = Date.now() - state.firstAttemptTs
+			if (waitTime > this.MAX_WAIT_TIME || state.attempts >= this.MAX_WAIT_ATTEMPTS) {
+				console.log(
+					`⏱️ Photo ${photoId} waited too long ` +
+						`(${Math.round(waitTime / 60000)}m, ${state.attempts} attempts)`,
+				)
+				photosToFail.push(photoId)
+			}
+		}
+
+		// retry photos whose inspections are now synced
+		for (const photoId of photosToRetry) {
+			this.waitingPhotos.delete(photoId)
+			await PhotoRepository.retryUpload(photoId)
+		}
+
+		// mark photos that waited too long as failed
+		for (const photoId of photosToFail) {
+			this.waitingPhotos.delete(photoId)
+			await PhotoRepository.markFailed(
+				photoId,
+				"Inspection failed to sync. Please retry inspection first.",
+			)
+		}
+
+		// trigger queue if any photos became ready
+		if (photosToRetry.length > 0) {
+			this.processQueue()
 		}
 	}
 
@@ -58,24 +124,22 @@ class PhotoUploadService {
 			const pendingPhotos = await PhotoRepository.getPendingUploads()
 
 			if (pendingPhotos.length === 0) {
-				console.log("✅ No pending photo uploads")
 				return
 			}
 
 			console.log(`📸 Processing ${pendingPhotos.length} pending photo uploads...`)
 
-			// process photos one at a time
-			for (const photo of pendingPhotos) {
-				try {
-					await this.uploadPhoto(photo.id)
-				} catch (err: any) {
-					console.error(`❌ Failed to upload photo ${photo.id}:`, err.message)
-					const errorMsg = this.getErrorMessage(err)
-					await PhotoRepository.markFailed(photo.id, errorMsg)
-				}
-			}
+			const results = await Promise.allSettled(
+				pendingPhotos.map((photo) => this.uploadPhoto(photo.id)),
+			)
 
-			console.log("✅ Photo upload queue processed")
+			const successful = results.filter((r) => r.status === "fulfilled").length
+			const failed = results.filter((r) => r.status === "rejected").length
+
+			console.log(
+				`📸 Photo upload summary: ${successful} succeeded, ${failed} failed, ` +
+					`${this.waitingPhotos.size} waiting for inspection sync`,
+			)
 		} catch (err) {
 			console.error("❌ Photo upload queue error:", err)
 		} finally {
@@ -96,9 +160,32 @@ class PhotoUploadService {
 		}
 
 		if (!inspection.remoteId) {
+			const existingState = this.waitingPhotos.get(photoId)
+
+			if (existingState) {
+				existingState.attempts++
+				this.waitingPhotos.set(photoId, existingState)
+
+				console.log(
+					`⏳ Photo ${photoId} still waiting for inspection sync ` +
+						`(attempt ${existingState.attempts}/${this.MAX_WAIT_ATTEMPTS})`,
+				)
+			} else {
+				this.waitingPhotos.set(photoId, {
+					photoId,
+					inspectionId: inspection.id,
+					attempts: 1,
+					firstAttemptTs: Date.now(),
+				})
+
+				console.log(`⏳ Photo ${photoId} waiting for inspection ${inspection.id} to sync`)
+			}
+
 			// not marked as failed - skipped; will retry when inspection syncs
 			return
 		}
+
+		this.waitingPhotos.delete(photoId)
 
 		console.log(`📸 Uploading photo: ${photoId} to Cloudinary...`)
 
@@ -148,6 +235,14 @@ class PhotoUploadService {
 			console.log(`✅ Photo ${photoId} uploaded successfully to Cloudinary`)
 		} catch (err: any) {
 			console.error("❌ Photo upload failed:", err)
+
+			// don't marked as failed if it's a waiting issue
+			const errorMsg = this.getErrorMessage(err)
+
+			if (!errorMsg.includes("Waiting for inspection")) {
+				await PhotoRepository.markFailed(photoId, errorMsg)
+			}
+
 			throw err
 		}
 	}
@@ -258,6 +353,11 @@ class PhotoUploadService {
 	/** Get upload statistics */
 	async getStats() {
 		return await PhotoRepository.getUploadStats()
+	}
+
+	/** Get list of photos waiting for inspection */
+	getWaitingPhotos(): PhotoWaitingState[] {
+		return Array.from(this.waitingPhotos.values())
 	}
 }
 

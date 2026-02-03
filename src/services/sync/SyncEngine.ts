@@ -1,5 +1,4 @@
 import * as SecureStore from "expo-secure-store"
-import { Alert } from "react-native"
 import NetInfo from "@react-native-community/netinfo"
 import SyncOperation from "@/src/database/models/SyncOperation"
 import InspectionsAPI, { ConflictResponse } from "../api/inspections.api"
@@ -8,10 +7,9 @@ import ConflictRepository from "@/src/database/repositories/ConflictRepository"
 import InspectionRepository from "@/src/database/repositories/InspectionRepository"
 import SyncRepository from "@/src/database/repositories/SyncRepository"
 import PhotoUploadService from "../photo/PhotoUploadService"
-import ErrorAlert from "@/src/components/ui/ErrorAlert"
 import { CircuitBreaker } from "./CircuitBreaker"
 import { NetworkResilience } from "../network/NetworkResilience"
-import database from "@/src/database"
+import UnifiedErrorHandler from "../error/UnifiedErrorHandler"
 
 export type SyncStatus = "idle" | "syncing" | "error"
 
@@ -24,6 +22,14 @@ export interface SyncStats {
 	totalToSync?: number
 }
 
+interface RollbackData {
+	operationId: string
+	entityId: string
+	entityType: "inspection" | "photo"
+	snapshot: any
+	wasCreated: boolean // true if this was a CREATE operation
+}
+
 class SyncEngine {
 	private isProcessing = false
 	private status: SyncStatus = "idle"
@@ -34,10 +40,11 @@ class SyncEngine {
 
 	private circuitBreaker = new CircuitBreaker()
 
+	private rollbackStack: RollbackData[] = []
+
 	async initialize() {
 		console.log("🔄 SyncEngine: Initializing...")
 
-		// listen for network changes
 		this.networkUnsubscribe = NetInfo.addEventListener((state) => {
 			console.log("🌐 Network state changed:", state.isConnected)
 
@@ -89,7 +96,11 @@ class SyncEngine {
 			this.syncProgress = { completed: 0, total: operations.length }
 			this.notifyListeners(this.status, await this.getStats())
 
-			await this.processIndividual(operations)
+			if (operations.length >= 3) {
+				await this.processBatch(operations)
+			} else {
+				await this.processIndividual(operations)
+			}
 
 			this.updateStatus("idle")
 
@@ -161,7 +172,17 @@ class SyncEngine {
 
 	/** Process operations in batch - for larger batches (3+ operations) */
 	private async processBatch(operations: SyncOperation[]): Promise<void> {
+		this.rollbackStack = []
+
 		try {
+			// create rollback points for all operations BEFORE processing
+			for (const op of operations) {
+				const rollbackData = await this.createRollbackPoint(op)
+				if (rollbackData) {
+					this.rollbackStack.push(rollbackData)
+				}
+			}
+
 			// prepare batch request
 			const batchOperations = operations.map((op) => {
 				const data = JSON.parse(op.payload)
@@ -196,7 +217,6 @@ class SyncEngine {
 				// check for conflicts (409)
 				if (!result.success && result.error === "conflict" && result.data) {
 					conflictCount++
-					console.log(`⚠️ Conflict detected in batch for operation ${operation.id}`)
 
 					tasks.push(this.handleConflict(operation, result.conflict_data))
 					continue
@@ -230,25 +250,92 @@ class SyncEngine {
 			console.log(
 				`✅ Batch sync completed: ${successCount} succeeded, ${failCount} failed, ${conflictCount} conflicts.`,
 			)
+
+			if (failCount > 0) {
+				console.log(`⏮️ Rolling back ${this.rollbackStack.length} operations due to batch failure`)
+				await this.rollbackBatch()
+
+				UnifiedErrorHandler.showToast({
+					message: `Sync failed for ${failCount} inspections. Changes have been restored.`,
+					isNetworkError: true,
+				} as any)
+			}
 		} catch (err: any) {
 			console.error("❌ Batch sync failed:", err)
+
+			await this.rollbackBatch()
 
 			for (const operation of operations) {
 				await SyncRepository.markFailed(operation.id, "Batch sync failed:" + err.message)
 			}
 
-			ErrorAlert.show(err)
+			UnifiedErrorHandler.showToast(err)
 		}
+	}
+
+	/** Create rollback point for any operation */
+	private async createRollbackPoint(operation: SyncOperation): Promise<RollbackData | null> {
+		try {
+			if (operation.operationType === "CREATE_INSPECTION") {
+				// for CREATE, mark it so we can delete on rollback
+				return {
+					operationId: operation.id,
+					entityId: operation.entityId,
+					entityType: "inspection",
+					snapshot: null,
+					wasCreated: true,
+				}
+			}
+
+			if (operation.operationType === "UPDATE_INSPECTION") {
+				const snapshot = await InspectionRepository.createRollbackPoint(operation.entityId)
+				return {
+					operationId: operation.id,
+					entityId: operation.entityId,
+					entityType: "inspection",
+					snapshot,
+					wasCreated: false,
+				}
+			}
+
+			return null
+		} catch (err) {
+			console.error(`Failed to create rollback point for ${operation.id}:`, err)
+			return null
+		}
+	}
+
+	/** Rollback all operations in the stack */
+	private async rollbackBatch(): Promise<void> {
+		console.log(`⏮️ Rolling back ${this.rollbackStack.length} operations...`)
+
+		// rollback in reverse order (LIFO)
+		for (let i = this.rollbackStack.length - 1; i >= 0; i--) {
+			const rollback = this.rollbackStack[i]
+
+			try {
+				if (rollback.wasCreated) {
+					// CREATE entities can be deleted
+					console.log(`⏮️ Deleting created entity ${rollback.entityId}`)
+					await InspectionRepository.delete(rollback.entityId)
+				} else if (rollback.snapshot) {
+					// restore snapshot for UPDATE entities
+					console.log(`⏮️ Restoring snapshot for ${rollback.entityId}`)
+					await InspectionRepository.rollbackInspection(rollback.entityId, rollback.snapshot)
+				}
+			} catch (err) {
+				console.error(`Failed to rollback ${rollback.operationId}:`, err)
+			}
+		}
+
+		this.rollbackStack = []
 	}
 
 	/** Process a single sync operation */
 	async processOperation(operation: SyncOperation): Promise<void> {
 		console.log(`🔄 Processing operation: ${operation.operationType} (${operation.id})`)
 
-		let rollbackData: any = null
-		if (operation.operationType === "UPDATE_INSPECTION") {
-			rollbackData = await InspectionRepository.createRollbackPoint(operation.entityId)
-		}
+		const rollbackData = await this.createRollbackPoint(operation)
 
 		await SyncRepository.markInProgress(operation.id)
 
@@ -272,14 +359,21 @@ class SyncEngine {
 		} catch (err: any) {
 			console.error(`❌ Operation failed: ${operation.id}`, err)
 
+			// rollback on any error except conflict
 			if (err.response?.status !== 409 && rollbackData) {
-				await InspectionRepository.rollbackInspection(operation.entityId, rollbackData)
+				if (rollbackData.wasCreated) {
+					await InspectionRepository.delete(rollbackData.entityId)
+				} else if (rollbackData.snapshot) {
+					await InspectionRepository.rollbackInspection(
+						rollbackData.entityId,
+						rollbackData.snapshot,
+					)
+				}
 
-				Alert.alert(
-					"Sync Failed",
-					"Your changes couldn't be synced. We've restored the previous version.",
-					[{ text: "OK" }],
-				)
+				UnifiedErrorHandler.showToast({
+					message: "Sync failed. Changes have been restored.",
+					isNetworkError: true,
+				} as any)
 			}
 
 			// handle conflict (409)
@@ -290,16 +384,7 @@ class SyncEngine {
 
 			if (operation.retryCount >= operation.maxRetries) {
 				console.error(`❌ Max retries exceeded for inspection ${operation.entityId}`)
-
 				await InspectionRepository.quarantineInspection(operation.entityId, err.message)
-
-				return
-
-				await InspectionRepository.markSyncError(
-					operation.entityId,
-					"Sync failed after maximum retries. Your changes are saved locally.",
-				)
-
 				return
 			}
 
@@ -322,7 +407,7 @@ class SyncEngine {
 		await this.circuitBreaker.execute(async () => {
 			const response = await NetworkResilience.withRetry(
 				() => InspectionsAPI.create(data, operation.idempotencyKey),
-				{ maxAttempts: 3, baseDelay: 1000 },
+				{ maxAttempts: 3 },
 			)
 
 			await InspectionRepository.markSynced(operation.entityId, response.id, response.version)
@@ -340,7 +425,7 @@ class SyncEngine {
 		if (!remoteId) {
 			throw new Error(
 				`Cannot update inspection ${operation.entityId}: no remote_id. ` +
-					`Inspection must be created first. Payload: ${JSON.stringify(payload)}`,
+					`Inspection must be created first.`,
 			)
 		}
 
@@ -355,7 +440,7 @@ class SyncEngine {
 		await this.circuitBreaker.execute(async () => {
 			const response = await NetworkResilience.withRetry(
 				() => InspectionsAPI.update(remoteId, data, operation.idempotencyKey),
-				{ maxAttempts: 3, baseDelay: 1000 },
+				{ maxAttempts: 3 },
 			)
 
 			if ("error" in response && response.error === "conflict") {
@@ -385,10 +470,6 @@ class SyncEngine {
 
 		const conflictFields = ConflictDetector.detectConflicts(clientData, serverData)
 
-		console.log("📋 Conflict fields:", conflictFields)
-
-		// TODO: handle conflicts on same inspection - i.e. when there's a new conflict on same inspection
-
 		try {
 			await ConflictRepository.create({
 				inspectionId: operation.entityId,
@@ -412,19 +493,6 @@ class SyncEngine {
 			console.error("❌ Failed to create conflict record:", err)
 			throw err
 		}
-	}
-
-	private async quarantineInspection(inspectionId: string, errorMessage: string): Promise<void> {
-		const inspection = await InspectionRepository.getById(inspectionId)
-		if (!inspection) return
-
-		await database.write(async () => {
-			await inspection.update((record) => {
-				record.status = "sync_failed"
-				record.syncError = errorMessage
-				record.submittedTs = Date.now()
-			})
-		})
 	}
 
 	/** Get sync stats */

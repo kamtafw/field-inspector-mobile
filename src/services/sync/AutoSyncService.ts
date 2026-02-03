@@ -11,6 +11,7 @@ import { DataIntegrityService } from "../integrity/DataIntegrityService"
  */
 class AutoSyncService {
 	private isInitialized = false
+	private lastCheckTime = 0
 	private checkInterval?: NodeJS.Timeout
 	private networkUnsubscribe?: () => void
 
@@ -64,6 +65,10 @@ class AutoSyncService {
 
 	/** Check if there's work to do and trigger sync */
 	private async checkAndSync() {
+		const now = Date.now()
+		if (now - this.lastCheckTime < 5000) return
+		this.lastCheckTime = now
+
 		try {
 			if (!NetworkMonitor.isOnline()) {
 				return

@@ -93,13 +93,24 @@ api.interceptors.response.use(
 				// store flag that token needs refresh when online
 				await SecureStore.setItemAsync("needsTokenRefresh", "true")
 
-				// allow request to fail gracefully without logout
-				return Promise.reject({
-					message: "You're offline. Your work is saved locally.",
-					isOfflineAuthError: true,
-					shouldAllowOfflineWork: true,
-					originalError: error,
+				// allow request to pass through for offline operations
+				const newConfig = { ...originalRequest }
+				delete newConfig.headers.Authorization
+				return Promise.resolve({
+					data: null,
+					config: newConfig,
+					headers: {},
+					status: 200,
+					statusText: "Offline Mode",
 				})
+
+				// allow request to fail gracefully without logout
+				// return Promise.resolve({
+				// 	message: "You're offline. Your work is saved locally.",
+				// 	isOfflineAuthError: true,
+				// 	shouldAllowOfflineWork: true,
+				// 	originalError: error,
+				// })
 			}
 
 			// mark request as retried
@@ -146,6 +157,8 @@ api.interceptors.response.use(
 					await SecureStore.setItemAsync("refreshToken", response.data.refresh)
 				}
 
+				await SecureStore.deleteItemAsync("needsTokenRefresh")
+
 				console.log("✅ Token refreshed successfully")
 
 				onTokenRefreshed(newAccessToken)
@@ -160,14 +173,21 @@ api.interceptors.response.use(
 				isRefreshing = false
 				refreshSubscribers = []
 
-				await SecureStore.deleteItemAsync("accessToken")
-				await SecureStore.deleteItemAsync("refreshToken")
-
-				emitLogoutEvent()
+				const netState2 = await NetInfo.fetch()
+				if (netState2.isConnected) {
+					await SecureStore.deleteItemAsync("accessToken")
+					await SecureStore.deleteItemAsync("refreshToken")
+					emitLogoutEvent()
+				} else {
+					await SecureStore.setItemAsync("needsTokenRefresh", "true")
+				}
 
 				return Promise.reject({
-					message: "Session expired. Please log in again",
-					isAuthError: true,
+					message: netState2.isConnected
+						? "Session expired. Please log in again"
+						: "Offline - will sync when connected",
+					isAuthError: netState2.isConnected,
+					isOfflineAuthError: !netState2.isConnected,
 					originalError: refreshError,
 				})
 			}

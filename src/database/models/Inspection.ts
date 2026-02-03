@@ -5,7 +5,7 @@ export interface InspectionResponse {
 	[itemId: string]: {
 		value: string | number | boolean | null
 		notes?: string
-		timestamp: number
+		timestamp?: number
 	}
 }
 
