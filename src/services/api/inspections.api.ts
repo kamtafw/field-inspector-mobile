@@ -65,6 +65,16 @@ export interface InspectionTemplateDTO {
 	created_at: string
 }
 
+export interface InspectionTemplateResult {
+	count: number
+	current_page: number
+	next: number | null
+	page_size: number
+	previous: number | null
+	results: InspectionTemplateDTO[]
+	total_pages: number
+}
+
 export interface ChecklistItemsDTO {
 	id: string
 	question: string
@@ -180,8 +190,9 @@ class InspectionsAPI {
 	 */
 	async getTemplates(): Promise<InspectionTemplateDTO[]> {
 		try {
-			const response = await api.get<InspectionTemplateDTO[]>("/templates/")
-			return response.data
+			const response = await api.get<InspectionTemplateResult>("/templates/")
+
+			return response.data?.results
 		} catch (err: any) {
 			this.handleError(err, "Failed to fetch templates")
 			throw err

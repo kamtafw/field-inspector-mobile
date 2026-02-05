@@ -1,15 +1,14 @@
+import * as SecureStore from "expo-secure-store"
+import { Q } from "@nozbe/watermelondb"
 import database from "@/src/database"
-import InspectionsAPI, { InspectionTemplateDTO } from "../api/inspections.api"
 import NetworkMonitor from "../network/NetworkMonitor"
 import InspectionTemplate from "@/src/database/models/InspectionTemplate"
-import { Q } from "@nozbe/watermelondb"
+import InspectionsAPI, { InspectionTemplateDTO } from "../api/inspections.api"
+import { API_BASE_URL } from "@/src/config"
 
 class TemplateValidationService {
 	private collection = database.get<InspectionTemplate>("inspection_templates")
-
 	private templateCache: Map<string, InspectionTemplate> = new Map()
-	private lastFetchTime: number = 0
-	private readonly CACHE_DURATION = 24 * 60 * 60 * 1000 // 24 hours
 
 	/**
 	 * Validate template exists and is available
@@ -42,15 +41,10 @@ class TemplateValidationService {
 		if (NetworkMonitor.isOnline()) {
 			try {
 				const serverTemplate = await InspectionsAPI.getTemplateById(templateId)
-
-				// cache locally
 				const template = await this.saveTemplateLocally(serverTemplate)
 				this.templateCache.set(templateId, template)
-
 				return { valid: true, template: template }
 			} catch (err: any) {
-				console.error("Failed to fetch template from server:", err)
-
 				if (err.response?.status === 404) {
 					return {
 						valid: false,
@@ -61,15 +55,14 @@ class TemplateValidationService {
 
 				return {
 					valid: false,
-					error: "Unable to load template. Please check your connection and try again.",
+					error: "Unable to load template. Please check your connection.",
 				}
 			}
 		}
 
-		// offline and no local copy
 		return {
 			valid: false,
-			error: "Template not available offline. Please connect to the internet to download it.",
+			error: "Template not available offline. Please connect to download it.",
 		}
 	}
 
@@ -78,40 +71,64 @@ class TemplateValidationService {
 	 * Returns cached or fetches from server
 	 */
 	async getAvailableTemplates(): Promise<InspectionTemplate[]> {
-		// use cache if fresh
-		const now = Date.now()
+		const lastETag = await SecureStore.getItemAsync("templatesETag")
 
-		if (this.templateCache.size > 0 && now - this.lastFetchTime < this.CACHE_DURATION) {
-			return Array.from(this.templateCache.values())
-		}
-
-		// try local first
-		try {
-			const localTemplates = await this.getAllLocalTemplates()
-			if (localTemplates.length > 0) {
-				localTemplates.forEach((t) => this.templateCache.set(t.id, t))
-				return localTemplates
-			}
-		} catch (err) {
-			console.warn("Error loading local templates:", err)
-		}
-
-		// fetch from server if online
 		if (NetworkMonitor.isOnline()) {
 			try {
+				const token = await SecureStore.getItemAsync("accessToken")
+
+				// HEAD request to check ETag
+				const headResponse = await fetch(`${API_BASE_URL}/templates/`, {
+					method: "HEAD",
+					headers: {
+						Authorization: `Bearer ${token}`,
+						...(lastETag ? { "If-None-Match": lastETag } : {}),
+					},
+				})
+
+				const currentETag = headResponse.headers.get("etag")
+
+				if (headResponse.status === 304 || (currentETag && currentETag === lastETag)) {
+					console.log("✅ Templates cache is up to date")
+					const localTemplates = await this.getAllLocalTemplates()
+
+					if (localTemplates.length > 0) {
+						localTemplates.forEach((t) => this.templateCache.set(t.id, t))
+						return localTemplates
+					}
+				}
+
+				// ETag changed - fetch from server
+				console.log("📥 Templates updated, fetching from server...")
 				const serverTemplates = await InspectionsAPI.getTemplates()
+
+				if (currentETag) {
+					await SecureStore.setItemAsync("templatesETag", currentETag)
+				}
 
 				for (const serverTemplate of serverTemplates) {
 					const template = await this.saveTemplateLocally(serverTemplate)
-					this.templateCache.set(template.id, template)
+					this.templateCache.set(template.remoteId!, template)
 				}
 
-				this.lastFetchTime = now
 				return await this.getAllLocalTemplates()
 			} catch (err) {
 				console.error("Failed to fetch templates:", err)
+
+				// fall back to local
+				const localTemplates = await this.getAllLocalTemplates()
+				if (localTemplates.length > 0) {
+					return localTemplates
+				}
+
 				throw new Error("Unable to load templates. Please check your connection.")
 			}
+		}
+
+		// offline - use local
+		const localTemplates = await this.getAllLocalTemplates()
+		if (localTemplates.length > 0) {
+			return localTemplates
 		}
 
 		throw new Error("No templates available offline. Please connect to download templates.")
@@ -129,9 +146,9 @@ class TemplateValidationService {
 		try {
 			console.log("📥 Prefetching templates...")
 			await this.getAvailableTemplates()
-			console.log("✅ Templates prefetched successfully")
+			console.log("✅ Templates prefetched")
 		} catch (err) {
-			console.error("❌ Template prefetch failed:", err)
+			console.error("❌ Prefetch failed:", err)
 		}
 	}
 
@@ -160,18 +177,16 @@ class TemplateValidationService {
 
 		const now = Date.now()
 
-		const presentTemplate = await database.write(async () => {
+		return await database.write(async () => {
 			if (existingRecord) {
-				const updatedTemplate = await existingRecord.update((record) => {
+				return await existingRecord.update((record) => {
 					record.name = template.name
 					record.version = template.version
 					record.checklistItems = JSON.stringify(template.checklist_items)
 					record.syncedTs = now
 				})
-
-				return updatedTemplate
 			} else {
-				const newTemplate = await this.collection.create((record) => {
+				return await this.collection.create((record) => {
 					record.remoteId = template.id
 					record.name = template.name
 					record.version = template.version
@@ -179,12 +194,8 @@ class TemplateValidationService {
 					record.syncedTs = now
 					record.createdTs = now
 				})
-
-				return newTemplate
 			}
 		})
-
-		return presentTemplate
 	}
 
 	/**
@@ -192,7 +203,6 @@ class TemplateValidationService {
 	 */
 	clearCache(): void {
 		this.templateCache.clear()
-		this.lastFetchTime = 0
 	}
 }
 

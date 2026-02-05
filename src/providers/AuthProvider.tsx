@@ -8,6 +8,7 @@ import AuthService from "../services/auth/AuthService"
 import AutoSyncService from "../services/sync/AutoSyncService"
 import NetworkMonitor from "../services/network/NetworkMonitor"
 import AuthAPI, { LoginCredentials, SignupCredentials } from "../services/api/auth.api"
+import TemplateValidation from "../services/template/TemplateValidation"
 
 interface AuthContextValue {
 	isAuthenticated: boolean
@@ -101,6 +102,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		setUserName(`${user.firstName} ${user.lastName}`)
 		setUserRole(user.role)
 
+		TemplateValidation.prefetchTemplates().catch((err) => {
+			console.warn("Failed to prefetch templates:", err)
+		})
+
 		await AutoSyncService.syncNow()
 	}
 
@@ -112,6 +117,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		setUserEmail(user.email)
 		setUserName(`${user.firstName} ${user.lastName}`)
 		setUserRole(user.role)
+
+		TemplateValidation.prefetchTemplates().catch((err) => {
+			console.warn("Failed to prefetch templates:", err)
+		})
 
 		await AutoSyncService.syncNow()
 	}

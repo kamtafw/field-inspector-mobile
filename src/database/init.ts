@@ -5,22 +5,22 @@ import migrations from "./migrations"
 import Inspection from "./models/Inspection"
 import SyncOperation from "./models/SyncOperation"
 import Conflict from "./models/Conflict"
+import User from "./models/User"
+import InspectionTemplate from "./models/InspectionTemplate"
+import Photo from "./models/Photo"
 
 let database: Database | null = null
 
 export async function initDatabase(): Promise<Database> {
 	if (database) {
-		console.log("Database already initialized")
 		return database
 	}
 
 	try {
-		console.log("Initializing database...")
-
 		const adapter = new SQLiteAdapter({
 			schema,
 			// migrations,
-			jsi: true, // JSI for better performance
+			jsi: true,
 			onSetUpError: (error) => {
 				console.error("Database setup error:", error)
 				throw error
@@ -29,10 +29,10 @@ export async function initDatabase(): Promise<Database> {
 
 		database = new Database({
 			adapter,
-			modelClasses: [Inspection, SyncOperation, Conflict],
+			modelClasses: [User, InspectionTemplate, Inspection, SyncOperation, Conflict, Photo],
 		})
 
-		console.log("✅ Database initialized successfully")
+		console.log("✅ Database initialized")
 		return database
 	} catch (error) {
 		console.error("❌ Database initialization failed:", error)
@@ -41,12 +41,4 @@ export async function initDatabase(): Promise<Database> {
 	}
 }
 
-export function getDatabase(): Database {
-	if (!database) {
-		throw new Error("Database not initialized. Call initDatabase() first.")
-	}
-
-	return database
-}
-
-export { database }
+export default database as any as Database

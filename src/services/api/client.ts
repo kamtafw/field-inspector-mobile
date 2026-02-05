@@ -6,6 +6,7 @@ import NetInfo from "@react-native-community/netinfo"
 
 interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
 	_retry?: boolean
+	_offlineByPass?: boolean
 }
 
 /** track if system's currently refreshing - to prevent multiple refresh calls */

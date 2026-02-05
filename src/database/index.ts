@@ -10,11 +10,10 @@ import Conflict from "./models/Conflict"
 import Photo from "./models/Photo"
 import User from "./models/User"
 
-// SQLite adapter to the underlying database
 const adapter = new SQLiteAdapter({
 	schema,
 	// migrations,
-	jsi: true /* Platform.OS === 'ios' */, // works for better performance
+	jsi: true,
 	onSetUpError: (error) => {
 		console.error("Database setup error:", error)
 	},
