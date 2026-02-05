@@ -1,10 +1,10 @@
 import { useState } from "react"
 import { View, Text, TouchableOpacity, Platform, FlatList, RefreshControl } from "react-native"
-import clsx from "clsx"
-import { Feather } from "@expo/vector-icons"
+import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useNavigation } from "@react-navigation/native"
 import { SafeAreaView } from "react-native-safe-area-context"
-import { NativeStackNavigationProp } from "@react-navigation/native-stack"
+import { Feather } from "@expo/vector-icons"
+import clsx from "clsx"
 
 import InspectionCard from "./components/InspectionCard"
 import { useAuth } from "@/src/providers/AuthProvider"
@@ -16,13 +16,17 @@ import SyncStatusBar from "@/src/components/features/SyncStatusBar"
 import NetworkStatusIndicator from "@/src/components/features/NetworkStatusIndicator"
 import AutoSyncService from "@/src/services/sync/AutoSyncService"
 import PhotoUploadQueue from "@/src/components/features/PhotoUploadQueue"
+import { getAvatarColor, getInitials } from "@/src/utils/avatar"
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<MainStackParamList, "Home">
 
 export default function HomeScreen() {
-	const { userId } = useAuth()
-	const { inspections, isLoading, error } = useInspections()
 	const navigation = useNavigation<HomeScreenNavigationProp>()
+	const { inspections, isLoading, error } = useInspections()
+	const { userName, userEmail } = useAuth()
+	const [firstName, lastName] = userName?.split(" ") || []
+	const initials = getInitials(firstName, lastName)
+	const avatarColor = getAvatarColor(userName || userEmail || "")
 
 	const [refreshing, setRefreshing] = useState(false)
 
@@ -53,10 +57,11 @@ export default function HomeScreen() {
 						</View>
 
 						<TouchableOpacity
-							className="w-10 h-10 bg-[#007aff] rounded-full items-center justify-center"
+							className="w-10 h-10 rounded-full items-center justify-center"
 							onPress={() => navigation.navigate("Profile")}
+							style={{ backgroundColor: avatarColor }}
 						>
-							<Text className="text-white text-lg font-bold">{userId || "?"}</Text>
+							<Text className="text-white text-lg font-bold">{initials}</Text>
 						</TouchableOpacity>
 					</View>
 

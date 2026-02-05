@@ -5,6 +5,7 @@ import { useAuth } from "@/src/providers/AuthProvider"
 import AuthAPI from "@/src/services/api/auth.api"
 import InspectionRepository from "@/src/database/repositories/InspectionRepository"
 import PhotoRepository from "@/src/database/repositories/PhotoRepository"
+import { getAvatarColor, getInitials } from "@/src/utils/avatar"
 
 interface UserProfile {
 	id: string
@@ -14,9 +15,12 @@ interface UserProfile {
 }
 
 export default function ProfileScreen() {
-	const { logout } = useAuth()
+	const { logout, userName, userEmail, userRole } = useAuth()
 
-	const [profile, setProfile] = useState<UserProfile | null>(null)
+	const [firstName, lastName] = userName?.split(" ") || []
+	const initials = getInitials(firstName, lastName)
+	const avatarColor = getAvatarColor(userName || userEmail || "")
+
 	const [stats, setStats] = useState({
 		totalInspections: 0,
 		syncedInspections: 0,
@@ -28,25 +32,13 @@ export default function ProfileScreen() {
 	const [isLoggingOut, setIsLoggingOut] = useState(false)
 
 	useEffect(() => {
-		loadProfile()
 		loadStats()
 	}, [])
 
-	const loadProfile = async () => {
-		try {
-			const user = await AuthAPI.getCurrentUser()
-			if (user) {
-				setProfile(user as any)
-			}
-		} catch (err) {
-			console.error("Error loading profile:", err)
-		} finally {
-			setIsLoading(false)
-		}
-	}
-
 	const loadStats = async () => {
 		try {
+			setIsLoading(true)
+
 			const inspections = await InspectionRepository.collection.query().fetch()
 			const photos = await PhotoRepository.collection.query().fetch()
 
@@ -60,6 +52,8 @@ export default function ProfileScreen() {
 			})
 		} catch (err) {
 			console.error("Error loading stats:", err)
+		} finally {
+			setIsLoading(false)
 		}
 	}
 
@@ -72,7 +66,7 @@ export default function ProfileScreen() {
 				onPress: async () => {
 					setIsLoggingOut(true)
 					try {
-						await logout()
+						await logout(true)
 					} catch (err) {
 						console.error("Logout failed:", err)
 					} finally {
@@ -98,17 +92,16 @@ export default function ProfileScreen() {
 			<ScrollView className="flex-1" contentContainerClassName="p-6">
 				{/* Header */}
 				<View className="items-center mb-8 mt-4">
-					<View className="w-24 h-24 bg-[#007aff] rounded-full items-center justify-center mb-4">
-						<Text className="text-white text-4xl font-bold">
-							{profile?.name?.charAt(0).toUpperCase() || "?"}
-						</Text>
+					<View
+						className="w-24 h-24 rounded-full items-center justify-center"
+						style={{ backgroundColor: avatarColor }}
+					>
+						<Text className="text-white text-4xl font-bold">{initials}</Text>
 					</View>
-					<Text className="text-2xl font-bold text-[#1a1a1a] mb-1">{profile?.name || "User"}</Text>
-					<Text className="text-base text-[#666] mb-2">{profile?.email || ""}</Text>
-					<View className="bg-[#e3f2fd] px-3 py-1 rounded-full">
-						<Text className="text-xs text-[#0277bd] font-semibold uppercase">
-							{profile?.role || "Inspector"}
-						</Text>
+					<Text className="text-2xl font-bold text-[#1a1a1a] mt-4">{userName}</Text>
+					<Text className="text-base text-[#666]">{userEmail}</Text>
+					<View className="bg-[#e3f2fd] px-3 py-1 rounded-full mt-2">
+						<Text className="text-xs text-[#0277bd] font-semibold uppercase">{userRole}</Text>
 					</View>
 				</View>
 

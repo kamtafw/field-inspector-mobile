@@ -14,6 +14,7 @@ interface AuthContextValue {
 	userId: string | null
 	userEmail: string | null
 	userName: string | null
+	userRole: string | null
 	signup: (credentials: SignupCredentials) => Promise<void>
 	login: (credentials: LoginCredentials) => Promise<void>
 	logout: (clearLocalData: boolean) => Promise<void>
@@ -36,6 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 	const [userId, setUserId] = useState<string | null>(null)
 	const [userEmail, setUserEmail] = useState<string | null>(null)
 	const [userName, setUserName] = useState<string | null>(null)
+	const [userRole, setUserRole] = useState<string | null>(null)
 
 	// restore auth from boot step
 	useEffect(() => {
@@ -48,6 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 				if (user) {
 					setUserEmail(user.email)
 					setUserName(`${user.firstName} ${user.lastName}`)
+					setUserRole(user.role)
 				}
 			})
 		}
@@ -62,6 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			setUserId(null)
 			setUserEmail(null)
 			setUserName(null)
+			setUserRole(null)
 
 			Alert.alert("Session Expired", "Your session has expired. Please log in again.", [
 				{ text: "OK" },
@@ -95,6 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		setUserId(user.id)
 		setUserEmail(user.email)
 		setUserName(`${user.firstName} ${user.lastName}`)
+		setUserRole(user.role)
 
 		await AutoSyncService.syncNow()
 	}
@@ -106,6 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		setUserId(user.id)
 		setUserEmail(user.email)
 		setUserName(`${user.firstName} ${user.lastName}`)
+		setUserRole(user.role)
 
 		await AutoSyncService.syncNow()
 	}
@@ -117,11 +123,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		setUserId(null)
 		setUserEmail(null)
 		setUserName(null)
+		setUserRole(null)
 	}
 
 	return (
 		<AuthContext.Provider
-			value={{ isAuthenticated, userId, userEmail, userName, signup, login, logout }}
+			value={{ isAuthenticated, userId, userEmail, userName, userRole, signup, login, logout }}
 		>
 			{children}
 		</AuthContext.Provider>
