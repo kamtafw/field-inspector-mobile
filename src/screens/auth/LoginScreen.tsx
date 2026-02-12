@@ -13,6 +13,7 @@ import { useNavigation } from "@react-navigation/native"
 import { useAuth } from "@/src/providers/AuthProvider"
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { AuthStackParamList } from "@/src/navigation/types"
+import { getErrorMessage } from "@/src/services/api/client"
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList, "Login">
 
@@ -38,7 +39,7 @@ export default function LoginScreen() {
 			await login({ email, password })
 		} catch (err: any) {
 			console.error("Login error:", err)
-			const errorMessage = err.response?.data?.error || err.message || "Login failed"
+			const errorMessage = getErrorMessage(err)
 			setError(errorMessage)
 		} finally {
 			setIsLoading(false)
@@ -58,7 +59,7 @@ export default function LoginScreen() {
 				</View>
 
 				{/* Form */}
-				<View className="w-[100%]">
+				<View className="w-full">
 					<View className="mb-5">
 						<Text className="text-sm font-semibold text-[#333] mb-2">Email</Text>
 						<TextInput

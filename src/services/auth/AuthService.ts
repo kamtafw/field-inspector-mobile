@@ -16,9 +16,7 @@ class AuthService {
 	// Login user
 	async login(credentials: LoginCredentials) {
 		const response = await AuthAPI.login(credentials)
-
 		const user = await UserRepository.create(response.user)
-
 		return user
 	}
 

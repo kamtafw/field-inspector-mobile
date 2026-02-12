@@ -15,12 +15,12 @@ let isRefreshing = false
 /** queue of requests waiting for token refresh */
 let refreshSubscribers: Array<(token: string) => void> = []
 
-/** Add subscriber to queue */
+/** add subscriber to queue */
 function subscribeTokenRefresh(callback: (token: string) => void) {
 	refreshSubscribers.push(callback)
 }
 
-/** Notify all subscribers when token refresh completes */
+/** notify all subscribers when token refresh completes */
 function onTokenRefreshed(token: string) {
 	refreshSubscribers.forEach((callback) => callback(token))
 	refreshSubscribers = []
@@ -39,7 +39,7 @@ api.interceptors.request.use(
 	async (config: InternalAxiosRequestConfig) => {
 		const isAuthEndpoint =
 			config.url?.includes("/auth/login") ||
-			config.url?.includes("/auth/register") ||
+			config.url?.includes("/auth/signup") ||
 			config.url?.includes("/auth/refresh")
 
 		if (isAuthEndpoint) {
@@ -82,9 +82,44 @@ api.interceptors.response.use(
 			})
 		}
 
-		// handle 401 unauthorized
+		const isAuthEndpoint =
+			originalRequest?.url?.includes("/auth/login") ||
+			originalRequest?.url?.includes("/auth/signup") ||
+			originalRequest?.url?.includes("/auth/refresh")
+
+		if (isAuthEndpoint) {
+			// for auth endpoints, return the actual error from the server
+			const status = error.response.status
+			const serverMessage =
+				(error.response.data as any)?.message ||
+				(error.response.data as any)?.detail ||
+				(error.response.data as any)?.error
+
+			let userMessage: string
+
+			if (status === 401 || status === 403) {
+				// wrong credentials
+				userMessage = serverMessage || "Invalid email or password"
+			} else if (status >= 500) {
+				userMessage = "Server error. Please try again later."
+			} else if (status === 400) {
+				// validation error
+				userMessage = serverMessage || "Please check your input and try again"
+			} else {
+				userMessage = serverMessage || "Login failed"
+			}
+
+			return Promise.reject({
+				message: userMessage,
+				status: status,
+				isAuthEndpoint: true,
+				originalError: error,
+			})
+		}
+
+		// handle 401 unauthorized for PROTECTED endpoints only
 		if (error.response.status === 401 && originalRequest && !originalRequest._retry) {
-			console.log("🔄 401 detected, attempting token refresh...")
+			console.log("🔄 401 detected on protected endpoint, attempting token refresh...")
 
 			const netState = await NetInfo.fetch()
 
@@ -104,14 +139,6 @@ api.interceptors.response.use(
 					status: 200,
 					statusText: "Offline Mode",
 				})
-
-				// allow request to fail gracefully without logout
-				// return Promise.resolve({
-				// 	message: "You're offline. Your work is saved locally.",
-				// 	isOfflineAuthError: true,
-				// 	shouldAllowOfflineWork: true,
-				// 	originalError: error,
-				// })
 			}
 
 			// mark request as retried
@@ -205,7 +232,7 @@ api.interceptors.response.use(
 	},
 )
 
-/** event listeners for logout */
+/** Event listeners for logout */
 let logoutListeners: Array<() => void> = []
 
 /** Subscribe to logout events */
@@ -229,14 +256,23 @@ export function isNetworkError(error: any): boolean {
 	return error?.isNetworkError === true || !error?.response
 }
 
-/** Check if error is authentication-related */
+/** Check if error is authentication-related (session expired, not login failure) */
 export function isAuthError(error: any): boolean {
-	return error?.isAuthError === true || !error?.response
+	if (error?.isAuthEndpoint) {
+		return false
+	}
+	return error?.isAuthError === true
+}
+
+/** Check if error is a login/signup failure */
+export function isLoginError(error: any): boolean {
+	return error?.isAuthEndpoint === true
 }
 
 /** Get user-friendly error message */
 export function getErrorMessage(error: any): string {
-	if (error?.message) {
+	// use message if it's already set
+	if (error?.message && typeof error.message === "string") {
 		return error.message
 	}
 
@@ -249,7 +285,9 @@ export function getErrorMessage(error: any): string {
 	}
 
 	if (error?.response?.status === 401) {
-		return "Session expired. Please log in again."
+		// only show session expired for non-auth endpoints
+		const isAuthEndpoint = error?.config?.url?.includes("/auth/")
+		return isAuthEndpoint ? "Invalid credentials" : "Session expired. Please log in again."
 	}
 
 	if (error?.response?.status === 403) {
