@@ -24,7 +24,7 @@ export default class Inspection extends Model {
 	static table = "inspections"
 
 	@text("remote_id") remoteId?: string
-	@text("template_id") templateId!: string
+	@text("template_id") templateId!: string // server UUID (template.remoteId)
 	@text("facility_address") facilityAddress!: string
 	@text("facility_name") facilityName!: string
 

@@ -106,7 +106,12 @@ class AuthAPI {
 	async logout(): Promise<void> {
 		const refreshToken = await SecureStore.getItemAsync("refreshToken")
 		if (refreshToken) {
-			await api.post("/auth/logout/", { refresh: refreshToken })
+			try {
+				await api.post("/auth/logout/", { refresh: refreshToken })
+				console.log("✅ Backend logout successful")
+			} catch (error) {
+				console.log("⚠️ Backend logout failed (non-critical)")
+			}
 		}
 
 		await SecureStore.deleteItemAsync("accessToken")

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { Subscription } from "rxjs"
 import { Q } from "@nozbe/watermelondb"
 import database from "@/src/database"
@@ -8,7 +8,6 @@ import InspectionRepository, {
 	UpdateInspectionPayload,
 } from "@/src/database/repositories/InspectionRepository"
 import { useAuth } from "@/src/providers/AuthProvider"
-import ErrorHandler from "@/src/services/error/ErrorHandler"
 import UnifiedErrorHandler from "../services/error/UnifiedErrorHandler"
 
 interface UseInspectionsReturn {
@@ -74,6 +73,7 @@ export default function useInspections(): UseInspectionsReturn {
 		return () => {
 			if (subscription) {
 				subscription.unsubscribe()
+				console.log("🧹 Unsubscribed from inspections")
 			}
 		}
 	}, [userId])
@@ -89,14 +89,13 @@ export default function useInspections(): UseInspectionsReturn {
 		try {
 			const inspection = await InspectionRepository.create(
 				{
-					templateId: data.templateId,
+					template: data.template,
 					facilityName: data.facilityName,
 					facilityAddress: data.facilityAddress,
 					responses: JSON.parse(JSON.stringify(data.responses)),
 				},
 				userId,
 			)
-			console.log("✅ Inspection created:", inspection.id)
 
 			return inspection
 		} catch (err: any) {

@@ -18,6 +18,8 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import PhotoGallery from "./components/PhotoGallery"
 import EmptyState from "@/src/components/ui/EmptyState"
 import { InspectionDetailSkeleton } from "@/src/components/ui/SkeletonLoader"
+import InspectionTemplate from "@/src/database/models/InspectionTemplate"
+import TemplateValidation from "@/src/services/template/TemplateValidation"
 
 type InspectionDetailRouteProp = RouteProp<MainStackParamList, "InspectionDetail">
 type NavigationProp = NativeStackNavigationProp<MainStackParamList>
@@ -36,13 +38,37 @@ export default function InspectionDetailScreen() {
 
 	const [facilityName, setFacilityName] = useState("")
 	const [facilityAddress, setFacilityAddress] = useState("")
-	const [responses, setResponses] = useState<any>({})
+	const [responses, setResponses] = useState<Record<string, any>>({})
+	const [template, setTemplate] = useState<InspectionTemplate | null>(null)
 
 	useEffect(() => {
 		if (inspection) {
-			setFacilityName(inspection.facilityName)
-			setFacilityAddress(inspection.facilityAddress)
-			setResponses(inspection.responses || {})
+			const loadVariables = async () => {
+				setFacilityName(inspection.facilityName)
+				setFacilityAddress(inspection.facilityAddress)
+				setResponses(inspection.responses || {})
+
+				const { valid, isDeleted, template } = await TemplateValidation.validateTemplate(
+					inspection.templateId,
+				)
+
+				if (isDeleted || !valid) {
+					Alert.alert(
+						"Template Unavailable",
+						"This inspection template is no longer available. Please contact support.",
+						[{ text: "OK", onPress: () => navigation.goBack() }],
+					)
+					return
+				}
+
+				setTemplate(template!)
+
+				if (inspection.status === "draft") {
+					setIsEditing(true)
+				}
+			}
+
+			loadVariables()
 
 			if (inspection.status === "draft") {
 				setIsEditing(true)
@@ -132,14 +158,15 @@ export default function InspectionDetailScreen() {
 		)
 	}
 
-	const handleChecklistResponse = (itemId: string, value: string) => {
-		setResponses({
-			...responses,
+	const handleChecklistResponse = (itemId: string, value: any) => {
+		setResponses((prev) => ({
+			...prev,
 			[itemId]: {
+				...prev[itemId],
 				value,
 				timestamp: Date.now(),
 			},
-		})
+		}))
 	}
 
 	const getStatusBadge = () => {
@@ -209,6 +236,12 @@ export default function InspectionDetailScreen() {
 		inspection.status === "draft" ||
 		inspection.status === "submitted" ||
 		inspection.status === "synced"
+
+	const checklistItems = template
+		? typeof template.checklistItems === "string"
+			? JSON.parse(template.checklistItems)
+			: template.checklistItems
+		: []
 
 	return (
 		<SafeAreaView className="flex-1 bg-background">
@@ -286,7 +319,7 @@ export default function InspectionDetailScreen() {
 							<TextInput
 								className="border border-[#e0e0e0] rounded-lg p-3 text-base text-[#1a1a1a]"
 								value={facilityAddress}
-								onChangeText={setFacilityName}
+								onChangeText={setFacilityAddress}
 								placeholder="Enter facility address"
 								editable={canEdit}
 							/>
@@ -315,74 +348,108 @@ export default function InspectionDetailScreen() {
 
 				{/* Checklist Responses */}
 				<View className="bg-white rounded-xl p-4 mb-4">
-					<Text className="text-lg font-semibold text-[#1a1a1a] mb-4">Checklist</Text>
+					<Text className="text-lg font-semibold text-[#1a1a1a] mb-4">{template?.name}</Text>
 
-					{Object.keys(responses).length === 0 ? (
-						<Text className="text-sm text-[#999] italic">No checklist responses yet</Text>
+					{!template || checklistItems.length === 0 ? (
+						<Text className="text-sm text-[#999] italic">No checklist available</Text>
 					) : (
-						Object.entries(responses).map(([itemId, response]: [string, any]) => (
-							<View key={itemId} className="mb-4 pb-4 border-b border-[#f0f0f0] last:border-b-0">
-								<Text className="text-sm text-[#666] font-semibold mb-2">Item: {itemId}</Text>
+						checklistItems.map((item: any) => {
+							const response = responses[item.id] || {}
+							const value = response.value ?? ""
 
-								{isEditing ? (
-									<View className="flex-row gap-2">
-										{["Pass", "Fail", "N/A"].map((option) => (
-											<TouchableOpacity
-												key={option}
-												className={clsx(
-													"flex-1 p-3 rounded-lg border-2",
-													response.value === option
-														? "bg-[#007aff] border-[#007aff]"
-														: "bg-white border-[#e0e0e0]",
-												)}
-												onPress={() => handleChecklistResponse(itemId, option)}
-												disabled={!canEdit}
-											>
-												<Text
+							return (
+								<View key={item.id} className="mb-4 pb-4 border-b border-[#f0f0f0] last:border-b-0">
+									<Text className="text-sm text-[#666] font-semibold mb-2">{item.question}</Text>
+
+									{isEditing ? (
+										item.type === "boolean" ? (
+											<View className="flex-row gap-3">
+												<TouchableOpacity
 													className={clsx(
-														"text-center font-semibold",
-														response.value === option ? "text-white" : "text-[#666]",
+														"flex-1 bg-gray-50 border-2 border-[#e0e0e0] rounded-lg p-3 items-center",
+														value === "pass" && "bg-green-100 border-green-600",
+													)}
+													onPress={() => handleChecklistResponse(item.id, "pass")}
+													disabled={!canEdit}
+												>
+													<Text
+														className={clsx(
+															"text-base text-[#666] font-semibold",
+															value && "text-[#1a1a1a]",
+														)}
+													>
+														✓ Pass
+													</Text>
+												</TouchableOpacity>
+												<TouchableOpacity
+													className={clsx(
+														"flex-1 bg-gray-50 border-2 border-[#e0e0e0] rounded-lg p-3 items-center",
+														value === "fail" && "bg-red-100 border-red-400",
+													)}
+													onPress={() => handleChecklistResponse(item.id, "fail")}
+													disabled={!canEdit}
+												>
+													<Text
+														className={clsx(
+															"text-base text-[#666] font-semibold",
+															value && "text-[#1a1a1a]",
+														)}
+													>
+														✕ Fail
+													</Text>
+												</TouchableOpacity>
+											</View>
+										) : (
+											<TextInput
+												className="bg-[#f9f9f9] border border-[#e0e0e0] rounded-lg p-3 text-base text-[#1a1a1a] min-h-24"
+												value={value}
+												onChangeText={(text) => handleChecklistResponse(item.id, text)}
+												placeholder="Enter notes..."
+												placeholderTextColor="#999"
+												multiline
+												numberOfLines={4}
+												textAlignVertical="top"
+											/>
+										)
+									) : (
+										<View className="flex-row items-center">
+											{item.type === "boolean" ? (
+												<View
+													className={clsx(
+														"flex-1 border-2 p-3 rounded-lg items-center",
+														value === "pass"
+															? "bg-green-100 border-green-600"
+															: value === "fail"
+																? "bg-red-100 border-red-400"
+																: "bg-[#f0f0f0]",
 													)}
 												>
-													{option}
-												</Text>
-											</TouchableOpacity>
-										))}
-									</View>
-								) : (
-									<View className="flex-row items-center">
-										<View
-											className={clsx(
-												"px-3 py-1.5 rounded-full",
-												response.value === "pass"
-													? "bg-[#e8f8ec]"
-													: response.value === "fail"
-														? "bg-[#ffebee]"
-														: "bg-[#f0f0f0]",
+													<Text
+														className={clsx(
+															"text-sm font-semibold",
+															value === "pass"
+																? "text-[#34c759]"
+																: value === "fail"
+																	? "text-[#ff3b30]"
+																	: "text-[#666]",
+														)}
+													>
+														{value === "pass" ? "✓ Pass" : value === "fail" ? "✕ Fail" : "N/A"}
+													</Text>
+												</View>
+											) : (
+												<Text className="text-base text-[#1a1a1a]">{value || "Nil"}</Text>
 											)}
-										>
-											<Text
-												className={clsx(
-													"text-sm font-semibold",
-													response.value.toLowerCase() === "pass"
-														? "text-[#34c759]"
-														: response.value.toLowerCase() === "fail"
-															? "text-[#ff3b30]"
-															: "text-[#666]",
-												)}
-											>
-												{response.value}
-											</Text>
+											{response.timestamp && (
+												<Text className="text-xs text-[#999] ml-3">
+													{new Date(response.timestamp).toLocaleString()}
+												</Text>
+											)}
 										</View>
-										{response.timestamp && (
-											<Text className="text-xs text-[#999] ml-3">
-												{new Date(response.timestamp).toLocaleString()}
-											</Text>
-										)}
-									</View>
-								)}
-							</View>
-						))
+									)}
+								</View>
+							)
+						})
 					)}
 				</View>
 

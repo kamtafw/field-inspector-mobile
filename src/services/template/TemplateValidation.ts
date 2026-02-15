@@ -20,6 +20,7 @@ class TemplateValidationService {
 		error?: string
 		isDeleted?: boolean
 	}> {
+		console.log(`Check for template with id: ${templateId}`)
 		// check cache first
 		const cached = this.templateCache.get(templateId)
 		if (cached) {
@@ -93,7 +94,7 @@ class TemplateValidationService {
 					const localTemplates = await this.getAllLocalTemplates()
 
 					if (localTemplates.length > 0) {
-						localTemplates.forEach((t) => this.templateCache.set(t.id, t))
+						localTemplates.forEach((t) => this.templateCache.set(t.remoteId!, t))
 						return localTemplates
 					}
 				}

@@ -24,6 +24,9 @@ class AuthService {
 	async logout(clearLocalData: boolean = true) {
 		await AuthAPI.logout()
 
+		// wait a moment for subscriptions to clean up
+		await new Promise((resolve) => setTimeout(resolve, 100))
+
 		if (!clearLocalData) {
 			await SecureStore.deleteItemAsync("accessToken")
 			await SecureStore.deleteItemAsync("refreshToken")

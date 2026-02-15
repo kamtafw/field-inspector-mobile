@@ -10,6 +10,9 @@ import PhotoUploadService from "../photo/PhotoUploadService"
 import { CircuitBreaker } from "./CircuitBreaker"
 import { NetworkResilience } from "../network/NetworkResilience"
 import UnifiedErrorHandler from "../error/UnifiedErrorHandler"
+import database from "@/src/database"
+import InspectionTemplate from "@/src/database/models/InspectionTemplate"
+import TemplateValidation from "../template/TemplateValidation"
 
 export type SyncStatus = "idle" | "syncing" | "error"
 
@@ -35,7 +38,7 @@ class SyncEngine {
 	private status: SyncStatus = "idle"
 	private syncProgress = { completed: 0, total: 0 }
 	private listeners: Array<(status: SyncStatus, stats?: SyncStats) => void> = []
-	private retryTimeoutId?: NodeJS.Timeout
+	private retryTimeoutId?: ReturnType<typeof setTimeout>
 	private networkUnsubscribe?: () => void
 
 	private circuitBreaker = new CircuitBreaker()
@@ -395,8 +398,14 @@ class SyncEngine {
 
 	/** Sync CREATE_INSPECTION operation */
 	private async syncCreateInspection(operation: SyncOperation, payload: any): Promise<void> {
+		const { template } = await TemplateValidation.validateTemplate(payload.templateId)
+
+		if (!template || !template.remoteId) {
+			throw new Error(`Template ${payload.templateId} not found or missing remoteId`)
+		}
+
 		const data = {
-			template_id: payload.templateId,
+			template_id: template.remoteId,
 			facility_name: payload.facilityName,
 			facility_address: payload.facilityAddress,
 			responses: payload.responses,
@@ -412,7 +421,7 @@ class SyncEngine {
 
 			await InspectionRepository.markSynced(operation.entityId, response.id, response.version)
 			await SyncRepository.markCompleted(operation.id)
-			console.log("✅ CREATE synced, remote_id:", response.id)
+			console.log("✅ CREATE_INSPECTION synced, remote_id:", response.id)
 		})
 	}
 

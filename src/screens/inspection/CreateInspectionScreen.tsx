@@ -57,6 +57,7 @@ export default function CreateInspectionScreen() {
 		setResponses((prev) => ({
 			...prev,
 			[itemId]: {
+				...prev[itemId],
 				value,
 				notes: "",
 				timestamp: Date.now(),
@@ -73,22 +74,27 @@ export default function CreateInspectionScreen() {
 		setIsLoading(true)
 
 		try {
-			const data = {
-				templateId: template?.remoteId || "",
-				facilityName,
-				facilityAddress,
-				responses,
-			}
+			const templateId = template?.remoteId || ""
+			const {
+				valid,
+				isDeleted,
+				template: availableTemplate,
+			} = await TemplateValidation.validateTemplate(templateId)
 
-			const { isDeleted } = await TemplateValidation.validateTemplate(data.templateId)
-
-			if (isDeleted) {
+			if (isDeleted || !valid) {
 				Alert.alert(
 					"Template Unavailable",
 					"This inspection template is no longer available. Please contact support.",
 					[{ text: "OK", onPress: () => navigation.goBack() }],
 				)
 				return
+			}
+
+			const data = {
+				template: availableTemplate!,
+				facilityName,
+				facilityAddress,
+				responses,
 			}
 
 			await createInspection(data)
@@ -128,22 +134,27 @@ export default function CreateInspectionScreen() {
 		}
 
 		try {
-			const data = {
-				templateId: template?.id || "",
-				facilityName,
-				facilityAddress,
-				responses,
-			}
+			const templateId = template?.remoteId || ""
+			const {
+				valid,
+				isDeleted,
+				template: availableTemplate,
+			} = await TemplateValidation.validateTemplate(templateId)
 
-			const { isDeleted } = await TemplateValidation.validateTemplate(data.templateId)
-
-			if (isDeleted) {
+			if (isDeleted || !valid) {
 				Alert.alert(
 					"Template Unavailable",
 					"This inspection template is no longer available. Please contact support.",
 					[{ text: "OK", onPress: () => navigation.goBack() }],
 				)
 				return
+			}
+
+			const data = {
+				template: availableTemplate!,
+				facilityName,
+				facilityAddress,
+				responses,
 			}
 
 			const inspection = await createInspection(data)

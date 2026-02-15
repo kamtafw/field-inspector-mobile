@@ -287,7 +287,7 @@ export function getErrorMessage(error: any): string {
 	if (error?.response?.status === 401) {
 		// only show session expired for non-auth endpoints
 		const isAuthEndpoint = error?.config?.url?.includes("/auth/")
-		return isAuthEndpoint ? "Invalid credentials" : "Session expired. Please log in again."
+		return isAuthEndpoint ? "Invalid email or password" : "Session expired. Please log in again."
 	}
 
 	if (error?.response?.status === 403) {

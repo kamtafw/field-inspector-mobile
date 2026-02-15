@@ -5,9 +5,10 @@ import Inspection, { InspectionResponse } from "../models/Inspection"
 import SyncOperation from "../models/SyncOperation"
 import database from ".."
 import SyncRepository from "./SyncRepository"
+import InspectionTemplate from "../models/InspectionTemplate"
 
 export interface CreateInspectionPayload {
-	templateId: string
+	template: InspectionTemplate | null
 	facilityName: string
 	facilityAddress: string
 	responses?: InspectionResponse
@@ -68,10 +69,15 @@ class InspectionRepository {
 	/** Create new inspection (offline-first) */
 	async create(data: CreateInspectionPayload, userId: string): Promise<Inspection> {
 		const now = Date.now()
+		const { template } = data
+
+		if (!template || !template.remoteId) {
+			throw new Error("Template not found or missing remoteId")
+		}
 
 		const inspection = await database.write(async () => {
 			const newInspection = await this.collection.create((record) => {
-				record.templateId = data.templateId
+				record.templateId = template.remoteId!
 				record.facilityName = data.facilityName
 				record.facilityAddress = data.facilityAddress
 				record.responses = JSON.parse(JSON.stringify(data.responses))
