@@ -20,3 +20,5 @@
 - Auto-Export - Automatically export failed inspections to cloud storage
 - Error Categorization - Group failures by type, suggest bulk fixes
 - Support Integration - One-click send to support with full context
+
+- I can't always load all existing inspections before filtering on the client-side. That may affect performance and storage

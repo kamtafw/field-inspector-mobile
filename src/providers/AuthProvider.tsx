@@ -9,6 +9,7 @@ import AutoSyncService from "../services/sync/AutoSyncService"
 import NetworkMonitor from "../services/network/NetworkMonitor"
 import AuthAPI, { LoginCredentials, SignupCredentials } from "../services/api/auth.api"
 import TemplateValidation from "../services/template/TemplateValidation"
+import InspectionSyncService from "../services/sync/InspectionSyncService"
 
 interface AuthContextValue {
 	isAuthenticated: boolean
@@ -97,15 +98,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		const user = await AuthService.signup(credentials)
 
 		setIsAuthenticated(true)
-		setUserId(user.id)
+		setUserId(String(user.id))
 		setUserEmail(user.email)
 		setUserName(`${user.firstName} ${user.lastName}`)
 		setUserRole(user.role)
 
-		TemplateValidation.prefetchTemplates().catch((err) => {
+		// prefetch templates first
+		await TemplateValidation.prefetchTemplates().catch((err) => {
 			console.warn("Failed to prefetch templates:", err)
 		})
 
+		// fetch inspections from server after signup
+		try {
+			await InspectionSyncService.fetchInspectionsFromServer()
+		} catch (err) {
+			console.warn("Failed to fetch inspections from server:", err)
+			// don't block signup if fetch fails
+		}
+
+		// then sync any local changes
 		await AutoSyncService.syncNow()
 	}
 
@@ -113,15 +124,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		const user = await AuthService.login(credentials)
 
 		setIsAuthenticated(true)
-		setUserId(user.id)
+		setUserId(String(user.id))
 		setUserEmail(user.email)
 		setUserName(`${user.firstName} ${user.lastName}`)
 		setUserRole(user.role)
 
-		TemplateValidation.prefetchTemplates().catch((err) => {
+		// prefetch templates first
+		await TemplateValidation.prefetchTemplates().catch((err) => {
 			console.warn("Failed to prefetch templates:", err)
 		})
 
+		// fetch inspections from server after login
+		try {
+			await InspectionSyncService.fetchInspectionsFromServer()
+		} catch (err) {
+			console.warn("Failed to fetch inspections from server:", err)
+			// don't block login if fetch fails
+		}
+
+		// then sync any local changes
 		await AutoSyncService.syncNow()
 	}
 

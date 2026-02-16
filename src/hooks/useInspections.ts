@@ -48,14 +48,20 @@ export default function useInspections(): UseInspectionsReturn {
 				setError(null)
 
 				const collection = database.get<Inspection>("inspections")
-				let query = collection.query(Q.where("inspector_id", userId))
+
+				const query = collection.query(
+					Q.where("inspector_id", userId),
+					Q.sortBy("created_ts", Q.desc),
+				)
+
+				// let query = collection.query(Q.where("inspector_id", userId))
+				// query = collection.query(Q.sortBy("created_ts", Q.desc))
 
 				// apply status filter
 				// apply search filter
 				// apply date range filter
 
 				// sort by most recent
-				query = collection.query(Q.sortBy("created_ts", Q.desc))
 
 				subscription = query.observe().subscribe((records) => {
 					setInspections(records)

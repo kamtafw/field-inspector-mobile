@@ -301,6 +301,7 @@ fix_*.patch
 # Visual Studio Code (config dir - if present, this merges user defined
 # workspace settings on top of react-native.code-workspace)
 /.vscode
+/.expo
 
 # Visual Studio
 .vs
