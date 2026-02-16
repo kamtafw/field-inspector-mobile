@@ -115,6 +115,11 @@ export default function CreateInspectionScreen() {
 			return
 		}
 
+		if (!facilityAddress.trim()) {
+			Alert.alert("Error", "Please enter a facility Address")
+			return
+		}
+
 		// check if all required questions are answered
 		const checklistItems = template?.checklistItems ? JSON.parse(template.checklistItems) : []
 		const unansweredCount = checklistItems

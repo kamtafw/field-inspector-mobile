@@ -10,8 +10,6 @@ import PhotoUploadService from "../photo/PhotoUploadService"
 import { CircuitBreaker } from "./CircuitBreaker"
 import { NetworkResilience } from "../network/NetworkResilience"
 import UnifiedErrorHandler from "../error/UnifiedErrorHandler"
-import database from "@/src/database"
-import InspectionTemplate from "@/src/database/models/InspectionTemplate"
 import TemplateValidation from "../template/TemplateValidation"
 
 export type SyncStatus = "idle" | "syncing" | "error"
@@ -34,6 +32,8 @@ interface RollbackData {
 }
 
 class SyncEngine {
+	private lastProcessTime = 0
+	private readonly MIN_PROCESS_INTERVAL = 5000
 	private isProcessing = false
 	private status: SyncStatus = "idle"
 	private syncProgress = { completed: 0, total: 0 }
@@ -76,7 +76,16 @@ class SyncEngine {
 
 	/** Process all pending sync operations */
 	async processQueue(): Promise<void> {
+		// debounce: don't process more than once every 5s
+		const now = Date.now()
+		if (now - this.lastProcessTime < this.MIN_PROCESS_INTERVAL && this.isProcessing) {
+			console.log("⏸️ Debouncing: Too soon since last process")
+			return
+		}
+		this.lastProcessTime = now
+
 		if (this.isProcessing) {
+			console.log("⏳ Already processing, will check later")
 			return
 		}
 
@@ -106,6 +115,12 @@ class SyncEngine {
 			}
 
 			this.updateStatus("idle")
+
+			const newPending = await SyncRepository.getPendingOperations()
+			if (newPending.length > 0 && !this.retryTimeoutId) {
+				console.log(`🔄 ${newPending.length} new operations detected, scheduling immediate retry`)
+				this.retryTimeoutId = setTimeout(() => this.processQueue(), 1000)
+			}
 
 			// schedule retry if there are still failed operations
 			await this.scheduleRetry()
@@ -156,7 +171,7 @@ class SyncEngine {
 			`⏰ Scheduling retry in ${Math.round(delayMs / 1000)}s for ${failedWithRetry.length} operations`,
 		)
 
-		this.retryTimeoutId = setTimeout(this.processQueue, delayMs)
+		this.retryTimeoutId = setTimeout(() => this.processQueue(), delayMs)
 	}
 
 	/** Process operations individually - for small batches (1-2 operations) */

@@ -30,15 +30,32 @@ class UserRepository {
 
 	/** Create user record on login */
 	async create(data: CreateUserPayload): Promise<User> {
+		// check if user already exists
+		const existing = await this.getById(data.id)
+
 		const user = await database.write(async () => {
-			return await this.collection.create((record) => {
-				record._raw.id = data.id
-				record.email = data.email
-				record.firstName = data.first_name
-				record.lastName = data.last_name
-				record.role = data.role
-				record.loginTs = Date.now()
-			})
+			if (existing) {
+				// update existing user
+				console.log(`📝 Updating existing user ${data.id}`)
+				return await existing.update((record) => {
+					record.email = data.email
+					record.firstName = data.first_name
+					record.lastName = data.last_name
+					record.role = data.role
+					record.loginTs = Date.now()
+				})
+			} else {
+				// create new user
+				console.log(`✨ Creating new user ${data.id}`)
+				return await this.collection.create((record) => {
+					record._raw.id = data.id
+					record.email = data.email
+					record.firstName = data.first_name
+					record.lastName = data.last_name
+					record.role = data.role
+					record.loginTs = Date.now()
+				})
+			}
 		})
 
 		return user

@@ -86,6 +86,11 @@ export default function InspectionDetailScreen() {
 	const handleSave = async () => {
 		if (!inspection) return
 
+		if (!facilityName.trim()) {
+			Alert.alert("Error", "Please enter a facility name")
+			return
+		}
+
 		try {
 			setIsSaving(true)
 
@@ -107,6 +112,31 @@ export default function InspectionDetailScreen() {
 
 	const handleSubmit = async () => {
 		if (!inspection) return
+
+		if (!facilityName.trim()) {
+			Alert.alert("Error", "Please enter a facility name", [
+				{ text: "OK", onPress: () => setIsEditing(true) },
+			])
+			return
+		}
+
+		if (!facilityAddress.trim()) {
+			Alert.alert("Error", "Please enter a facility Address", [
+				{ text: "OK", onPress: () => setIsEditing(true) },
+			])
+			return
+		}
+
+		// check if all required questions are answered
+		const checklistItems = template?.checklistItems ? JSON.parse(template.checklistItems) : []
+		const unansweredCount = checklistItems
+			.filter((item: any) => item.type === "boolean")
+			.filter((item: any) => responses[item.id] === undefined).length
+
+		if (unansweredCount > 0) {
+			Alert.alert("Incomplete", `You have ${unansweredCount} unanswered question(s)`)
+			return
+		}
 
 		Alert.alert(
 			"Submit Inspection",

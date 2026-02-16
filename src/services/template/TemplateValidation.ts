@@ -16,9 +16,9 @@ class TemplateValidationService {
 	 */
 	async validateTemplate(templateId: string): Promise<{
 		valid: boolean
+		isDeleted?: boolean
 		template?: InspectionTemplate
 		error?: string
-		isDeleted?: boolean
 	}> {
 		console.log(`Check for template with id: ${templateId}`)
 		// check cache first

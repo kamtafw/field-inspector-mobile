@@ -85,7 +85,8 @@ api.interceptors.response.use(
 		const isAuthEndpoint =
 			originalRequest?.url?.includes("/auth/login") ||
 			originalRequest?.url?.includes("/auth/signup") ||
-			originalRequest?.url?.includes("/auth/refresh")
+			originalRequest?.url?.includes("/auth/refresh") ||
+			originalRequest?.url?.includes("/auth/logout")
 
 		if (isAuthEndpoint) {
 			// for auth endpoints, return the actual error from the server
