@@ -147,9 +147,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 	}
 
 	const logout = async (clearLocalData: boolean = true) => {
+		setIsAuthenticated(false)
+
 		await AuthService.logout(clearLocalData)
 
-		setIsAuthenticated(false)
 		setUserId(null)
 		setUserEmail(null)
 		setUserName(null)

@@ -48,11 +48,15 @@ export default function InspectionDetailScreen() {
 				setFacilityAddress(inspection.facilityAddress)
 				setResponses(inspection.responses || {})
 
-				const { valid, isDeleted, template } = await TemplateValidation.validateTemplate(
+				if (inspection.status === "draft") {
+					setIsEditing(true)
+				}
+
+				const { isValid, isDeleted, template } = await TemplateValidation.validateTemplate(
 					inspection.templateId,
 				)
 
-				if (isDeleted || !valid) {
+				if ( isDeleted || !isValid) {
 					Alert.alert(
 						"Template Unavailable",
 						"This inspection template is no longer available. Please contact support.",

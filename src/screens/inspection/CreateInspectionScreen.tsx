@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import useInspections from "@/src/hooks/useInspections"
 import TemplateValidation from "@/src/services/template/TemplateValidation"
 import InspectionTemplate from "@/src/database/models/InspectionTemplate"
+import { checkStorageForInspection, isStorageFullError } from "@/src/utils/storage"
 
 export default function CreateInspectionScreen() {
 	const navigation = useNavigation()
@@ -53,6 +54,25 @@ export default function CreateInspectionScreen() {
 		}
 	}
 
+	/**
+	 * Check device storage before attempting any DB write.
+	 * Returns true if there's enough space, false (+ alert) if not.
+	 */
+	const assertStorageAvailable = async (): Promise<boolean> => {
+		const result = await checkStorageForInspection()
+		if (!result.hasEnoughSpace) {
+			Alert.alert(
+				"Storage Full",
+				`Your device only has ${result.freeSpaceLabel} free. ` +
+					`At least ${result.requiredMB} MB is needed to save an inspection.` +
+					`Please free up space and try again.`,
+				[{ text: "OK" }],
+			)
+			return false
+		}
+		return true
+	}
+
 	const handleResponseChange = (itemId: string, value: any) => {
 		setResponses((prev) => ({
 			...prev,
@@ -71,17 +91,20 @@ export default function CreateInspectionScreen() {
 			return
 		}
 
+		// pre-check storage before writing
+		if (!(await assertStorageAvailable())) return
+
 		setIsLoading(true)
 
 		try {
 			const templateId = template?.remoteId || ""
 			const {
-				valid,
+				isValid,
 				isDeleted,
 				template: availableTemplate,
 			} = await TemplateValidation.validateTemplate(templateId)
 
-			if (isDeleted || !valid) {
+			if (isDeleted || !isValid) {
 				Alert.alert(
 					"Template Unavailable",
 					"This inspection template is no longer available. Please contact support.",
@@ -103,7 +126,16 @@ export default function CreateInspectionScreen() {
 				{ text: "OK", onPress: () => navigation.goBack() },
 			])
 		} catch (err: any) {
-			Alert.alert("Error", err.message)
+			// detect disk-full errors that slipped past the pre-check
+			if (isStorageFullError(err)) {
+				Alert.alert(
+					"Storage Full",
+					"Your device ran out of storage while saving. Please free up space and try again.",
+					[{ text: "OK" }],
+				)
+			} else {
+				Alert.alert("Error", err.message)
+			}
 		} finally {
 			setIsLoading(false)
 		}
@@ -138,15 +170,18 @@ export default function CreateInspectionScreen() {
 			return
 		}
 
+		// pre-check storage before writing
+		if (!(await assertStorageAvailable())) return
+
 		try {
 			const templateId = template?.remoteId || ""
 			const {
-				valid,
+				isValid,
 				isDeleted,
 				template: availableTemplate,
 			} = await TemplateValidation.validateTemplate(templateId)
 
-			if (isDeleted || !valid) {
+			if (isDeleted || !isValid) {
 				Alert.alert(
 					"Template Unavailable",
 					"This inspection template is no longer available. Please contact support.",
@@ -174,7 +209,16 @@ export default function CreateInspectionScreen() {
 				},
 			])
 		} catch (err: any) {
-			Alert.alert("Error", err.message)
+			// detect disk-full errors that slipped past the pre-check
+			if (isStorageFullError(err)) {
+				Alert.alert(
+					"Storage Full",
+					"Your device ran out of storage while saving. Please free up space and try again.",
+					[{ text: "OK" }],
+				)
+			} else {
+				Alert.alert("Error", err.message)
+			}
 		}
 	}
 
@@ -192,9 +236,21 @@ export default function CreateInspectionScreen() {
 	if (templateError || !template) {
 		return (
 			<SafeAreaView className="flex-1 bg-background">
+				<View className="flex-row justify-between items-center p-5 pt-10 bg-white border-b border-[#e0e0e0]">
+					<TouchableOpacity onPress={() => navigation.goBack()}>
+						<Text className="text-base text-[#007aff]">← Back</Text>
+					</TouchableOpacity>
+
+					<View className="flex-1 mx-4">
+						<Text className="text-lg font-semibold text-center text-[#1a1a1a]">
+							Template Error
+						</Text>
+					</View>
+				</View>
+
 				<View className="flex-1 justify-center items-center p-8">
 					<Text className="text-6xl mb-4">⚠️</Text>
-					<Text className="text-xl font-semibold text-[#1a1a1a] mb-2">Template Error</Text>
+					{/* <Text className="text-xl font-semibold text-[#1a1a1a] mb-2">Template Error</Text> */}
 					<Text className="text-base text-[#666] text-center mb-6">{templateError}</Text>
 					<TouchableOpacity className="bg-[#007AFF] px-6 py-3 rounded-lg" onPress={loadTemplate}>
 						<Text className="text-white text-base font-semibold">Retry</Text>

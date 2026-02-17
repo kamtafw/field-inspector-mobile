@@ -30,7 +30,10 @@ class InspectionSyncService {
 			while (hasMore) {
 				const response = await InspectionsAPI.getAll(page, 50)
 
+				console.log(`📥 Fetched page ${page} of inspections from server...`)
+
 				if (response.results.length > 0) {
+					console.log(`Saving ${response.results.length} inspections to local DB...`)
 					await this.saveInspectionsLocally(response.results)
 					totalFetched += response.results.length
 				}
@@ -72,6 +75,8 @@ class InspectionSyncService {
 						console.warn(`Template ${serverInspection.template_id} not found, skipping inspection`)
 						continue
 					}
+
+					console.log(`About to save ${serverInspection.id} to local DB`)
 
 					if (existingInspection) {
 						// update existing inspection if server version is newer
