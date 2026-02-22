@@ -18,7 +18,7 @@ The application is built around an offline-first architecture, where the local d
 
 ## Architecture Summary
 
-```slt
+```scss
 UI Layer (Screens)
       │
       ▼
@@ -86,7 +86,7 @@ Photo are queued separately and uploaded after inspection sync:
 
 ## Project Structure (High-Level)
 
-```slt
+```scss
 src/
  ├── screens/
  ├── components/
