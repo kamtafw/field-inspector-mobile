@@ -88,7 +88,7 @@ export class ErrorBoundary extends Component<Props, State> {
 						</Text>
 
 						{/* Error details (collapsible in production) */}
-						{__DEV__ && this.state.error && (
+						{/* {__DEV__ && this.state.error && (
 							<ScrollView className="w-full max-h-64 mb-6 bg-white rounded-lg p-4 border border-[#ff3b30]">
 								<Text className="text-xs text-[#ff3b30] font-semibold mb-2">
 									Error Details (Dev Only):
@@ -98,7 +98,7 @@ export class ErrorBoundary extends Component<Props, State> {
 									<Text className="text-xs text-[#999] font-mono">{this.state.error.stack}</Text>
 								)}
 							</ScrollView>
-						)}
+						)} */}
 
 						{/* Actions */}
 						<TouchableOpacity

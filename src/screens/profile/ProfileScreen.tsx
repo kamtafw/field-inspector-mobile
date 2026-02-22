@@ -198,7 +198,7 @@ export default function ProfileScreen() {
 				</TouchableOpacity>
 
 				{/* Footer */}
-				<Text className="text-center text-xs text-[#999] mb-4">Field Inspector © 2025</Text>
+				<Text className="text-center text-xs text-[#999] mb-4">Vantage — Field Inspector © 2025</Text>
 			</ScrollView>
 		</SafeAreaView>
 	)

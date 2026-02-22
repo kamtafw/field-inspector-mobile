@@ -22,7 +22,7 @@ export default function LoginScreen() {
 	const { login } = useAuth()
 
 	const [email, setEmail] = useState("")
-	const [password, setPassword] = useState(__DEV__ ? "testpass123" : "")
+	const [password, setPassword] = useState("")
 	const [isLoading, setIsLoading] = useState(false)
 	const [error, setError] = useState("")
 
@@ -54,7 +54,7 @@ export default function LoginScreen() {
 			<View className="flex-1 justify-center p-6">
 				{/* Header */}
 				<View className="items-center mb-12">
-					<Text className="text-3xl font-bold text-[#1a1a1a] mb-2">Field Inspector</Text>
+					<Text className="text-3xl font-bold text-[#1a1a1a] mb-2">Vantage — Field Inspector</Text>
 					<Text className="text-base text-[#666]">Sign in to continue</Text>
 				</View>
 

@@ -18,7 +18,7 @@ export default function BootLoadingScreen({ currentStep }: BootLoadingScreenProp
 	return (
 		<View className="flex-1 justify-center items-center bg-background">
 			<ActivityIndicator size="large" color="#007AFF" />
-			<Text className="mt-4 text-xl text-[#1a1a1a] font-semibold">Starting Field Inspector</Text>
+			<Text className="mt-4 text-xl text-[#1a1a1a] font-semibold">Starting Vantage</Text>
 			{currentStep && <Text className="mt-2 text-sm text-[#666]">{stepLabels[currentStep]}</Text>}
 		</View>
 	)

@@ -12,6 +12,5 @@ const getLocalIP = (fallback = "0.0.0.0"): string => {
 	return fallback
 }
 
-export const API_BASE_URL = __DEV__
-	? `http://${getLocalIP()}:8000/api/v1` // Replace with YOUR computer's IP (`http://${ENDPOINTS.IPv4}:8000/api/`)
-	: "https://your-production-api.com/api"
+export const API_BASE_URL =
+	process.env.EXPO_PUBLIC_API_BASE_URL ?? `http://${getLocalIP()}:8000/api/v1`
